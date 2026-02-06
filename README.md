@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Agentic Flagship
 
-## Getting Started
+A chat interface for an AI agent that scrapes websites. You send a prompt describing what you need, and the agent streams back its response in real time — showing you what it's thinking and doing as it works.
 
-First, run the development server:
+## How it works
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+The app is a Next.js frontend that talks to a separate backend service through a BFF (Backend-For-Frontend) proxy. The full flow looks like this:
+
+```
+Browser  →  Next.js API route  →  Backend agent service
+  chat UI      (BFF proxy)          (runs the agent)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1. The user types a mission prompt in the chat
+2. The frontend sends a **GET** request with `?prompt=` to the Next.js API route
+3. The API route proxies the request to the backend service
+4. The backend streams back **Server-Sent Events (SSE)** — token by token
+5. The frontend parses the stream and updates the chat in real time
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The agent sends two types of events:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Tokens** — the actual response text, streamed incrementally
+- **Thoughts** — the agent's internal reasoning steps, displayed in a collapsible panel
 
-## Learn More
+## Architecture
 
-To learn more about Next.js, take a look at the following resources:
+The project follows [Feature-Sliced Design](https://feature-sliced.design/) (FSD), which organizes code into layers by responsibility:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+app/                    → Pages and API routes (Next.js App Router)
+  api/agent/run-mission/  → BFF proxy endpoint
+  page.tsx                → Main chat page
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+widgets/                → Full UI sections composed from smaller pieces
+  chat-panel/             → Chat header + message list + input form
 
-## Deploy on Vercel
+features/               → User-facing functionality with business logic
+  run-mission/            → Hook that manages streaming, messages, and state
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+entities/               → Domain models and their UI representations
+  message/                → Message types (user/agent), MessageBubble, MessageList
+  agent/                  → Thought types, ThinkingIndicator, InlineThoughts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+shared/                 → Infrastructure used across all layers
+  api/                    → API client, SSE parser, proxy helpers, error types
+  types/                  → Shared type definitions
+  lib/                    → Utility functions
+```
+
+**Key rule of FSD:** layers can only import from layers below them. A feature can use an entity, but an entity can never import from a feature.
+
+## Getting started
+
+### Prerequisites
+
+- Node.js 18+
+- pnpm
+- A running backend service that exposes `GET /run-mission?prompt=`
+
+### Setup
+
+```bash
+pnpm install
+cp .env.example .env.local
+```
+
+Edit `.env.local` and set `BACKEND_URL` to point to your backend:
+
+```
+BACKEND_URL=http://localhost:8000
+```
+
+### Development
+
+```bash
+pnpm dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+### Testing
+
+```bash
+pnpm vitest run
+```
+
+## Tech stack
+
+| Layer        | Technology                          |
+| ------------ | ----------------------------------- |
+| Framework    | Next.js 16 (App Router)             |
+| Language     | TypeScript (strict)                 |
+| Styling      | Tailwind CSS 4 + shadcn/ui          |
+| Testing      | Vitest + React Testing Library      |
+| Code quality | ESLint, Prettier, Husky, Commitlint |
