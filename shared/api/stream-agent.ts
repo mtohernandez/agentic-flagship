@@ -1,6 +1,6 @@
-import { apiStream } from '../client';
-import { API_ROUTES } from '../config';
-import type { SSEEvent } from '../types';
+import { apiStream } from './client';
+import { API_ROUTES } from './config';
+import type { SSEEvent } from './types';
 
 export interface AgentStreamCallbacks {
   onToken: (content: string) => void;
@@ -14,10 +14,9 @@ export async function streamAgentMission(
   callbacks: AgentStreamCallbacks
 ): Promise<void> {
   try {
-    const stream = await apiStream(API_ROUTES.agent.runMission, {
-      method: 'POST',
-      body: JSON.stringify({ prompt }),
-    });
+    const stream = await apiStream(
+      API_ROUTES.agent.runMission + '?prompt=' + encodeURIComponent(prompt)
+    );
 
     const reader = stream.getReader();
 

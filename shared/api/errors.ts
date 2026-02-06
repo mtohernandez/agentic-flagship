@@ -1,25 +1,4 @@
-export class ApiError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ApiError';
-  }
-}
-
-export class NetworkError extends ApiError {
-  constructor(message: string = 'Network request failed') {
-    super(message);
-    this.name = 'NetworkError';
-  }
-}
-
-export class TimeoutError extends ApiError {
-  constructor(timeoutMs: number) {
-    super(`Request timed out after ${timeoutMs}ms`);
-    this.name = 'TimeoutError';
-  }
-}
-
-export class HttpError extends ApiError {
+export class HttpError extends Error {
   readonly status: number;
   readonly statusText: string;
   readonly body?: string;
@@ -33,7 +12,7 @@ export class HttpError extends ApiError {
   }
 }
 
-export class StreamError extends ApiError {
+export class StreamError extends Error {
   constructor(message: string = 'Stream error') {
     super(message);
     this.name = 'StreamError';

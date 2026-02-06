@@ -5,7 +5,6 @@ export interface ProxyHandlerOptions {
   upstream: string;
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   stream?: boolean;
-  transformRequest?: (req: NextRequest) => Promise<RequestInit>;
 }
 
 export function createProxyHandler(options: ProxyHandlerOptions) {
@@ -17,17 +16,16 @@ export function createProxyHandler(options: ProxyHandlerOptions) {
       return NextResponse.json({ error: 'Backend not configured' }, { status: 500 });
     }
 
-    const url = `${backendUrl}${options.upstream}`;
+    let url = `${backendUrl}${options.upstream}`;
 
-    let fetchInit: RequestInit = { method: options.method };
+    const fetchInit: RequestInit = { method: options.method };
 
-    if (options.transformRequest) {
-      fetchInit = {
-        ...fetchInit,
-        ...(await options.transformRequest(req)),
-      };
-    } else if (options.method !== 'GET') {
-      // Forward JSON body by default for non-GET
+    if (options.method === 'GET') {
+      const qs = req.nextUrl.searchParams.toString();
+      if (qs) {
+        url += `?${qs}`;
+      }
+    } else {
       try {
         const body = await req.json();
         fetchInit.headers = { 'Content-Type': 'application/json' };

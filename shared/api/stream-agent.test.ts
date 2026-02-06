@@ -1,11 +1,11 @@
-import { streamAgentMission, type AgentStreamCallbacks } from './agent';
+import { streamAgentMission, type AgentStreamCallbacks } from './stream-agent';
 
 // Mock the client module
-vi.mock('../client', () => ({
+vi.mock('./client', () => ({
   apiStream: vi.fn(),
 }));
 
-import { apiStream } from '../client';
+import { apiStream } from './client';
 
 describe('streamAgentMission', () => {
   const createMockCallbacks = (): AgentStreamCallbacks & {
@@ -149,16 +149,15 @@ describe('streamAgentMission', () => {
     expect(callbacks.onError).not.toHaveBeenCalled();
   });
 
-  it('sends POST with prompt in JSON body', async () => {
+  it('sends GET with prompt as query param', async () => {
     const callbacks = createMockCallbacks();
     vi.mocked(apiStream).mockResolvedValueOnce(createMockSSEStream([]));
 
     await streamAgentMission('test with spaces', callbacks);
 
-    expect(apiStream).toHaveBeenCalledWith('/agent/run-mission', {
-      method: 'POST',
-      body: JSON.stringify({ prompt: 'test with spaces' }),
-    });
+    expect(apiStream).toHaveBeenCalledWith(
+      '/agent/run-mission?prompt=' + encodeURIComponent('test with spaces')
+    );
   });
 
   it('silently ignores unknown event types', async () => {
@@ -182,9 +181,6 @@ describe('streamAgentMission', () => {
 
     await streamAgentMission('', callbacks);
 
-    expect(apiStream).toHaveBeenCalledWith('/agent/run-mission', {
-      method: 'POST',
-      body: JSON.stringify({ prompt: '' }),
-    });
+    expect(apiStream).toHaveBeenCalledWith('/agent/run-mission?prompt=' + encodeURIComponent(''));
   });
 });

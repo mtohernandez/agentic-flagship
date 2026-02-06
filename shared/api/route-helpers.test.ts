@@ -9,26 +9,13 @@ vi.mock('./server-config', () => ({
 // Import the mocked module
 import { getBackendUrl } from './server-config';
 
-function createRequest(body?: Record<string, unknown>): NextRequest {
-  if (body) {
-    return new NextRequest('http://localhost:3000/api/agent/run-mission', {
-      method: 'POST',
-      body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-  return new NextRequest('http://localhost:3000/api/agent/run-mission', {
-    method: 'POST',
-  });
-}
-
 describe('createProxyHandler', () => {
   beforeEach(() => {
     vi.mocked(global.fetch).mockReset();
     vi.mocked(getBackendUrl).mockReturnValue('http://localhost:8000');
   });
 
-  it('proxies POST request to upstream and streams response', async () => {
+  it('proxies GET request with query params to upstream and streams response', async () => {
     const sseBody = new ReadableStream({
       start(controller) {
         controller.enqueue(new TextEncoder().encode('data: {"type":"token"}\n\n'));
@@ -40,11 +27,13 @@ describe('createProxyHandler', () => {
 
     const handler = createProxyHandler({
       upstream: '/run-mission',
-      method: 'POST',
+      method: 'GET',
       stream: true,
     });
 
-    const req = createRequest({ prompt: 'test' });
+    const req = new NextRequest('http://localhost:3000/api/agent/run-mission?prompt=test', {
+      method: 'GET',
+    });
     const response = await handler(req);
 
     expect(response.status).toBe(200);
@@ -52,11 +41,33 @@ describe('createProxyHandler', () => {
     expect(response.headers.get('Cache-Control')).toBe('no-cache');
 
     expect(global.fetch).toHaveBeenCalledWith(
-      'http://localhost:8000/run-mission',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({ prompt: 'test' }),
+      'http://localhost:8000/run-mission?prompt=test',
+      expect.objectContaining({ method: 'GET' })
+    );
+  });
+
+  it('forwards query params for GET requests', async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ status: 'ok' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
       })
+    );
+
+    const handler = createProxyHandler({
+      upstream: '/search',
+      method: 'GET',
+    });
+
+    const req = new NextRequest('http://localhost:3000/api/search?q=hello&page=1', {
+      method: 'GET',
+    });
+    const response = await handler(req);
+
+    expect(response.status).toBe(200);
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://localhost:8000/search?q=hello&page=1',
+      expect.objectContaining({ method: 'GET' })
     );
   });
 
@@ -65,11 +76,13 @@ describe('createProxyHandler', () => {
 
     const handler = createProxyHandler({
       upstream: '/run-mission',
-      method: 'POST',
+      method: 'GET',
       stream: true,
     });
 
-    const req = createRequest({ prompt: 'test' });
+    const req = new NextRequest('http://localhost:3000/api/agent/run-mission?prompt=test', {
+      method: 'GET',
+    });
     const response = await handler(req);
 
     expect(response.status).toBe(502);
@@ -84,10 +97,12 @@ describe('createProxyHandler', () => {
 
     const handler = createProxyHandler({
       upstream: '/run-mission',
-      method: 'POST',
+      method: 'GET',
     });
 
-    const req = createRequest({ prompt: 'test' });
+    const req = new NextRequest('http://localhost:3000/api/agent/run-mission?prompt=test', {
+      method: 'GET',
+    });
     const response = await handler(req);
 
     expect(response.status).toBe(500);
@@ -100,10 +115,12 @@ describe('createProxyHandler', () => {
 
     const handler = createProxyHandler({
       upstream: '/run-mission',
-      method: 'POST',
+      method: 'GET',
     });
 
-    const req = createRequest({ prompt: 'test' });
+    const req = new NextRequest('http://localhost:3000/api/agent/run-mission?prompt=test', {
+      method: 'GET',
+    });
     const response = await handler(req);
 
     expect(response.status).toBe(500);
@@ -132,32 +149,28 @@ describe('createProxyHandler', () => {
     expect(body).toEqual({ status: 'ok' });
   });
 
-  it('supports transformRequest', async () => {
+  it('forwards POST body for non-GET requests', async () => {
     vi.mocked(global.fetch).mockResolvedValueOnce(
       new Response(JSON.stringify({ ok: true }), { status: 200 })
     );
 
     const handler = createProxyHandler({
-      upstream: '/custom',
+      upstream: '/submit',
       method: 'POST',
-      transformRequest: async (req) => {
-        const body = await req.json();
-        return {
-          headers: { 'X-Custom': 'true' },
-          body: JSON.stringify({ ...body, extra: true }),
-        };
-      },
     });
 
-    const req = createRequest({ prompt: 'test' });
+    const req = new NextRequest('http://localhost:3000/api/submit', {
+      method: 'POST',
+      body: JSON.stringify({ data: 'test' }),
+      headers: { 'Content-Type': 'application/json' },
+    });
     await handler(req);
 
     expect(global.fetch).toHaveBeenCalledWith(
-      'http://localhost:8000/custom',
+      'http://localhost:8000/submit',
       expect.objectContaining({
         method: 'POST',
-        headers: { 'X-Custom': 'true' },
-        body: JSON.stringify({ prompt: 'test', extra: true }),
+        body: JSON.stringify({ data: 'test' }),
       })
     );
   });
