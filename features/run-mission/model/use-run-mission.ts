@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { streamAgentMission } from '@/shared/api/agent-stream';
+import { streamAgentMission } from '@/shared/api';
 import type { Message, AgentMessage } from '@/entities/message';
 import { createUserMessage, createAgentMessage } from '@/entities/message';
 import { createThought } from '@/entities/agent';

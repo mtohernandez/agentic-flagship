@@ -1,15 +1,15 @@
 import { renderHook, act } from '@testing-library/react';
 import { useRunMission } from './use-run-mission';
 import type { AgentMessage } from '@/entities/message';
-import * as agentStream from '@/shared/api/agent-stream';
+import * as api from '@/shared/api';
 
-vi.mock('@/shared/api/agent-stream', () => ({
+vi.mock('@/shared/api', () => ({
   streamAgentMission: vi.fn(),
 }));
 
 describe('useRunMission', () => {
   beforeEach(() => {
-    vi.mocked(agentStream.streamAgentMission).mockReset();
+    vi.mocked(api.streamAgentMission).mockReset();
   });
 
   it('initializes with empty messages and not executing', () => {
@@ -20,7 +20,7 @@ describe('useRunMission', () => {
   });
 
   it('adds user message when running a mission', async () => {
-    vi.mocked(agentStream.streamAgentMission).mockImplementation(async () => {});
+    vi.mocked(api.streamAgentMission).mockImplementation(async () => {});
 
     const { result } = renderHook(() => useRunMission());
 
@@ -35,7 +35,7 @@ describe('useRunMission', () => {
   });
 
   it('adds agent message placeholder when running a mission', async () => {
-    vi.mocked(agentStream.streamAgentMission).mockImplementation(async () => {});
+    vi.mocked(api.streamAgentMission).mockImplementation(async () => {});
 
     const { result } = renderHook(() => useRunMission());
 
@@ -58,12 +58,12 @@ describe('useRunMission', () => {
     });
 
     expect(result.current.messages).toEqual([]);
-    expect(agentStream.streamAgentMission).not.toHaveBeenCalled();
+    expect(api.streamAgentMission).not.toHaveBeenCalled();
   });
 
   it('does not run mission while already executing', async () => {
     let resolveStream: () => void;
-    vi.mocked(agentStream.streamAgentMission).mockImplementation(
+    vi.mocked(api.streamAgentMission).mockImplementation(
       () => new Promise((resolve) => (resolveStream = resolve))
     );
 
@@ -81,7 +81,7 @@ describe('useRunMission', () => {
 
     // Only 2 messages (1 user + 1 agent from first call)
     expect(result.current.messages).toHaveLength(2);
-    expect(agentStream.streamAgentMission).toHaveBeenCalledTimes(1);
+    expect(api.streamAgentMission).toHaveBeenCalledTimes(1);
 
     // Cleanup
     await act(async () => {
@@ -90,7 +90,7 @@ describe('useRunMission', () => {
   });
 
   it('updates agent message content on token callback', async () => {
-    vi.mocked(agentStream.streamAgentMission).mockImplementation(async (_, callbacks) => {
+    vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
       callbacks.onToken('Hello');
       callbacks.onToken(' World');
       callbacks.onComplete();
@@ -107,7 +107,7 @@ describe('useRunMission', () => {
   });
 
   it('adds thoughts on thought callback', async () => {
-    vi.mocked(agentStream.streamAgentMission).mockImplementation(async (_, callbacks) => {
+    vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
       callbacks.onThought('Thinking step 1');
       callbacks.onThought('Thinking step 2');
       callbacks.onComplete();
@@ -129,7 +129,7 @@ describe('useRunMission', () => {
   });
 
   it('marks agent message as complete on completion', async () => {
-    vi.mocked(agentStream.streamAgentMission).mockImplementation(async (_, callbacks) => {
+    vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
       callbacks.onComplete();
     });
 
@@ -146,7 +146,7 @@ describe('useRunMission', () => {
   });
 
   it('sets isExecuting to false on completion', async () => {
-    vi.mocked(agentStream.streamAgentMission).mockImplementation(async (_, callbacks) => {
+    vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
       callbacks.onComplete();
     });
 
@@ -160,7 +160,7 @@ describe('useRunMission', () => {
   });
 
   it('handles errors correctly', async () => {
-    vi.mocked(agentStream.streamAgentMission).mockImplementation(async (_, callbacks) => {
+    vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
       callbacks.onError(new Error('Test error'));
     });
 
@@ -179,7 +179,7 @@ describe('useRunMission', () => {
   });
 
   it('clears conversation', async () => {
-    vi.mocked(agentStream.streamAgentMission).mockImplementation(async (_, callbacks) => {
+    vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
       callbacks.onComplete();
     });
 
@@ -199,7 +199,7 @@ describe('useRunMission', () => {
   });
 
   it('marks previous thoughts as complete when new thought arrives', async () => {
-    vi.mocked(agentStream.streamAgentMission).mockImplementation(async (_, callbacks) => {
+    vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
       callbacks.onThought('First thought');
       callbacks.onThought('Second thought');
       callbacks.onComplete();
@@ -220,8 +220,8 @@ describe('useRunMission', () => {
   });
 
   it('sets activeThoughtId during thought callbacks and clears on complete', async () => {
-    let capturedCallbacks!: agentStream.AgentStreamCallbacks;
-    vi.mocked(agentStream.streamAgentMission).mockImplementation(async (_, callbacks) => {
+    let capturedCallbacks!: api.AgentStreamCallbacks;
+    vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
       capturedCallbacks = callbacks;
     });
 
@@ -250,7 +250,7 @@ describe('useRunMission', () => {
   });
 
   it('clearConversation then re-run mission produces fresh state', async () => {
-    vi.mocked(agentStream.streamAgentMission).mockImplementation(async (_, callbacks) => {
+    vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
       callbacks.onToken('Response');
       callbacks.onComplete();
     });
@@ -277,7 +277,7 @@ describe('useRunMission', () => {
   });
 
   it('accumulates messages across multiple sequential missions', async () => {
-    vi.mocked(agentStream.streamAgentMission).mockImplementation(async (_, callbacks) => {
+    vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
       callbacks.onComplete();
     });
 
@@ -298,8 +298,8 @@ describe('useRunMission', () => {
   });
 
   it('transitions thought status from executing to complete', async () => {
-    let capturedCallbacks!: agentStream.AgentStreamCallbacks;
-    vi.mocked(agentStream.streamAgentMission).mockImplementation(async (_, callbacks) => {
+    let capturedCallbacks!: api.AgentStreamCallbacks;
+    vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
       capturedCallbacks = callbacks;
     });
 
