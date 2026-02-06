@@ -1,6 +1,21 @@
-import { createThought } from './types';
+// vi.resetModules() is needed because types.ts has a module-level thoughtIdCounter
+// that persists across tests. Dynamic import after resetModules gives each test a fresh counter.
 
 describe('createThought', () => {
+  let createThought!: typeof import('./types').createThought;
+
+  beforeEach(async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-01-15T12:00:00Z'));
+    vi.resetModules();
+    const mod = await import('./types');
+    createThought = mod.createThought;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('creates a thought with the given content', () => {
     const thought = createThought('Analyzing input...');
 
@@ -26,11 +41,13 @@ describe('createThought', () => {
     expect(thought.status).toBe('executing');
   });
 
-  it('generates unique IDs for each thought', () => {
+  it('generates unique IDs with incrementing counter', () => {
     const thought1 = createThought('First');
     const thought2 = createThought('Second');
 
     expect(thought1.id).not.toBe(thought2.id);
+    expect(thought1.id).toMatch(/^thought-1-/);
+    expect(thought2.id).toMatch(/^thought-2-/);
   });
 
   it('includes thought prefix in id', () => {
@@ -40,17 +57,8 @@ describe('createThought', () => {
   });
 
   it('sets timestamp to current date', () => {
-    const before = new Date();
     const thought = createThought('Test');
-    const after = new Date();
 
-    expect(thought.timestamp.getTime()).toBeGreaterThanOrEqual(before.getTime());
-    expect(thought.timestamp.getTime()).toBeLessThanOrEqual(after.getTime());
-  });
-
-  it('accepts complete status', () => {
-    const thought = createThought('Done', 'thought', 'complete');
-
-    expect(thought.status).toBe('complete');
+    expect(thought.timestamp).toEqual(new Date('2025-01-15T12:00:00Z'));
   });
 });

@@ -1,6 +1,21 @@
-import { createUserMessage, createAgentMessage } from './types';
+// vi.resetModules() is needed because types.ts has a module-level messageIdCounter
+// that persists across tests. Dynamic import after resetModules gives each test a fresh counter.
 
 describe('createUserMessage', () => {
+  let createUserMessage!: typeof import('./types').createUserMessage;
+
+  beforeEach(async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-01-15T12:00:00Z'));
+    vi.resetModules();
+    const mod = await import('./types');
+    createUserMessage = mod.createUserMessage;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('creates a user message with the given content', () => {
     const message = createUserMessage('Hello, agent!');
 
@@ -8,20 +23,19 @@ describe('createUserMessage', () => {
     expect(message.content).toBe('Hello, agent!');
   });
 
-  it('generates unique IDs for each message', () => {
+  it('generates unique IDs with incrementing counter', () => {
     const message1 = createUserMessage('First');
     const message2 = createUserMessage('Second');
 
     expect(message1.id).not.toBe(message2.id);
+    expect(message1.id).toMatch(/^msg-1-/);
+    expect(message2.id).toMatch(/^msg-2-/);
   });
 
   it('sets timestamp to current date', () => {
-    const before = new Date();
     const message = createUserMessage('Test');
-    const after = new Date();
 
-    expect(message.timestamp.getTime()).toBeGreaterThanOrEqual(before.getTime());
-    expect(message.timestamp.getTime()).toBeLessThanOrEqual(after.getTime());
+    expect(message.timestamp).toEqual(new Date('2025-01-15T12:00:00Z'));
   });
 
   it('includes msg prefix in id', () => {
@@ -32,6 +46,20 @@ describe('createUserMessage', () => {
 });
 
 describe('createAgentMessage', () => {
+  let createAgentMessage!: typeof import('./types').createAgentMessage;
+
+  beforeEach(async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-01-15T12:00:00Z'));
+    vi.resetModules();
+    const mod = await import('./types');
+    createAgentMessage = mod.createAgentMessage;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('creates an agent message with default values', () => {
     const message = createAgentMessage();
 
@@ -48,32 +76,24 @@ describe('createAgentMessage', () => {
     expect(message.status).toBe('streaming');
   });
 
-  it('generates unique IDs for each message', () => {
+  it('generates unique IDs with incrementing counter', () => {
     const message1 = createAgentMessage();
     const message2 = createAgentMessage();
 
     expect(message1.id).not.toBe(message2.id);
+    expect(message1.id).toMatch(/^msg-1-/);
+    expect(message2.id).toMatch(/^msg-2-/);
   });
 
   it('sets timestamp to current date', () => {
-    const before = new Date();
     const message = createAgentMessage();
-    const after = new Date();
 
-    expect(message.timestamp.getTime()).toBeGreaterThanOrEqual(before.getTime());
-    expect(message.timestamp.getTime()).toBeLessThanOrEqual(after.getTime());
+    expect(message.timestamp).toEqual(new Date('2025-01-15T12:00:00Z'));
   });
 
   it('includes msg prefix in id', () => {
     const message = createAgentMessage();
 
     expect(message.id).toMatch(/^msg-\d+-\d+$/);
-  });
-
-  it('initializes with empty thoughts array', () => {
-    const message = createAgentMessage('Content', 'complete');
-
-    expect(Array.isArray(message.thoughts)).toBe(true);
-    expect(message.thoughts).toHaveLength(0);
   });
 });

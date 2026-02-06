@@ -6,24 +6,39 @@ describe('streamAgentMission', () => {
     thoughts: string[];
     errors: Error[];
     completeCalls: number;
-  } => ({
-    tokens: [],
-    thoughts: [],
-    errors: [],
-    completeCalls: 0,
-    onToken: vi.fn(function (this: { tokens: string[] }, content: string) {
-      this.tokens.push(content);
-    }),
-    onThought: vi.fn(function (this: { thoughts: string[] }, content: string) {
-      this.thoughts.push(content);
-    }),
-    onComplete: vi.fn(function (this: { completeCalls: number }) {
-      this.completeCalls++;
-    }),
-    onError: vi.fn(function (this: { errors: Error[] }, error: Error) {
-      this.errors.push(error);
-    }),
-  });
+  } => {
+    const tokens: string[] = [];
+    const thoughts: string[] = [];
+    const errors: Error[] = [];
+    let completeCalls = 0;
+
+    return {
+      get tokens() {
+        return tokens;
+      },
+      get thoughts() {
+        return thoughts;
+      },
+      get errors() {
+        return errors;
+      },
+      get completeCalls() {
+        return completeCalls;
+      },
+      onToken: vi.fn((content: string) => {
+        tokens.push(content);
+      }),
+      onThought: vi.fn((content: string) => {
+        thoughts.push(content);
+      }),
+      onComplete: vi.fn(() => {
+        completeCalls++;
+      }),
+      onError: vi.fn((error: Error) => {
+        errors.push(error);
+      }),
+    };
+  };
 
   const createMockResponse = (chunks: string[]) => {
     let chunkIndex = 0;
@@ -154,5 +169,43 @@ describe('streamAgentMission', () => {
     expect(global.fetch).toHaveBeenCalledWith(
       'http://localhost:8000/run-mission?prompt=test%20with%20spaces'
     );
+  });
+
+  // TODO: This test documents current (incorrect) behavior where SSE events split
+  // across two read() calls are silently dropped because the parser splits on \n\n
+  // within each chunk independently. When buffering is fixed, this test should be
+  // updated to expect the token.
+  it('drops SSE event split across two read() calls', async () => {
+    const callbacks = createMockCallbacks();
+    const mockResponse = createMockResponse(['data: {"type":"token","con', 'tent":"Split"}\n\n']);
+    vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse);
+
+    await streamAgentMission('test prompt', callbacks);
+
+    expect(callbacks.tokens).toEqual([]);
+    expect(callbacks.onComplete).toHaveBeenCalled();
+  });
+
+  it('silently ignores unknown event types', async () => {
+    const callbacks = createMockCallbacks();
+    const mockResponse = createMockResponse([
+      'data: {"type":"metadata","content":"ignored"}\n\ndata: {"type":"token","content":"kept"}\n\n',
+    ]);
+    vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse);
+
+    await streamAgentMission('test prompt', callbacks);
+
+    expect(callbacks.tokens).toEqual(['kept']);
+    expect(callbacks.onError).not.toHaveBeenCalled();
+  });
+
+  it('encodes empty string prompt in URL', async () => {
+    const callbacks = createMockCallbacks();
+    const mockResponse = createMockResponse([]);
+    vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse);
+
+    await streamAgentMission('', callbacks);
+
+    expect(global.fetch).toHaveBeenCalledWith('http://localhost:8000/run-mission?prompt=');
   });
 });

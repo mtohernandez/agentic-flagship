@@ -24,7 +24,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             <Badge variant={isUser ? 'secondary' : 'outline'} className="shrink-0 text-xs">
               {isUser ? 'You' : 'Agent'}
             </Badge>
-            <div className="flex-1 whitespace-pre-wrap break-words text-sm">
+            <div className="flex-1 whitespace-pre-wrap wrap-break-word text-sm">
               {message.content || (
                 <span className="text-muted-foreground italic">Generating response...</span>
               )}

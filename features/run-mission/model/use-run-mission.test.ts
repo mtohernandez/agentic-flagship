@@ -1,5 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { useRunMission } from './use-run-mission';
+import type { AgentMessage } from '@/entities/message';
 import * as agentStream from '@/shared/api/agent-stream';
 
 vi.mock('@/shared/api/agent-stream', () => ({
@@ -119,12 +120,12 @@ describe('useRunMission', () => {
     });
 
     const agentMessage = result.current.messages.find((m) => m.role === 'agent');
-    expect(agentMessage?.role).toBe('agent');
-    if (agentMessage?.role === 'agent') {
-      expect(agentMessage.thoughts).toHaveLength(2);
-      expect(agentMessage.thoughts[0].content).toBe('Thinking step 1');
-      expect(agentMessage.thoughts[1].content).toBe('Thinking step 2');
-    }
+    expect(agentMessage).toBeDefined();
+    expect(agentMessage!.role).toBe('agent');
+    const agentMsg = agentMessage as AgentMessage;
+    expect(agentMsg.thoughts).toHaveLength(2);
+    expect(agentMsg.thoughts[0].content).toBe('Thinking step 1');
+    expect(agentMsg.thoughts[1].content).toBe('Thinking step 2');
   });
 
   it('marks agent message as complete on completion', async () => {
@@ -139,10 +140,9 @@ describe('useRunMission', () => {
     });
 
     const agentMessage = result.current.messages.find((m) => m.role === 'agent');
-    expect(agentMessage?.role).toBe('agent');
-    if (agentMessage?.role === 'agent') {
-      expect(agentMessage.status).toBe('complete');
-    }
+    expect(agentMessage).toBeDefined();
+    expect(agentMessage!.role).toBe('agent');
+    expect((agentMessage as AgentMessage).status).toBe('complete');
   });
 
   it('sets isExecuting to false on completion', async () => {
@@ -171,10 +171,10 @@ describe('useRunMission', () => {
     });
 
     const agentMessage = result.current.messages.find((m) => m.role === 'agent');
-    expect(agentMessage?.content).toBe('Error: Test error');
-    if (agentMessage?.role === 'agent') {
-      expect(agentMessage.status).toBe('error');
-    }
+    expect(agentMessage).toBeDefined();
+    expect(agentMessage!.content).toBe('Error: Test error');
+    expect(agentMessage!.role).toBe('agent');
+    expect((agentMessage as AgentMessage).status).toBe('error');
     expect(result.current.isExecuting).toBe(false);
   });
 
@@ -212,9 +212,127 @@ describe('useRunMission', () => {
     });
 
     const agentMessage = result.current.messages.find((m) => m.role === 'agent');
-    if (agentMessage?.role === 'agent') {
-      expect(agentMessage.thoughts[0].status).toBe('complete');
-      expect(agentMessage.thoughts[1].status).toBe('complete');
-    }
+    expect(agentMessage).toBeDefined();
+    expect(agentMessage!.role).toBe('agent');
+    const agentMsg = agentMessage as AgentMessage;
+    expect(agentMsg.thoughts[0].status).toBe('complete');
+    expect(agentMsg.thoughts[1].status).toBe('complete');
+  });
+
+  it('sets activeThoughtId during thought callbacks and clears on complete', async () => {
+    let capturedCallbacks!: agentStream.AgentStreamCallbacks;
+    vi.mocked(agentStream.streamAgentMission).mockImplementation(async (_, callbacks) => {
+      capturedCallbacks = callbacks;
+    });
+
+    const { result } = renderHook(() => useRunMission());
+
+    await act(async () => {
+      result.current.runMission('Test');
+    });
+
+    // Fire a thought and check activeThoughtId is set
+    await act(async () => {
+      capturedCallbacks.onThought('Thinking...');
+    });
+
+    let agentMsg = result.current.messages.find((m) => m.role === 'agent') as AgentMessage;
+    expect(agentMsg.activeThoughtId).toBeDefined();
+    expect(agentMsg.activeThoughtId).toBe(agentMsg.thoughts[0].id);
+
+    // Complete and verify activeThoughtId is cleared
+    await act(async () => {
+      capturedCallbacks.onComplete();
+    });
+
+    agentMsg = result.current.messages.find((m) => m.role === 'agent') as AgentMessage;
+    expect(agentMsg.activeThoughtId).toBeUndefined();
+  });
+
+  it('clearConversation then re-run mission produces fresh state', async () => {
+    vi.mocked(agentStream.streamAgentMission).mockImplementation(async (_, callbacks) => {
+      callbacks.onToken('Response');
+      callbacks.onComplete();
+    });
+
+    const { result } = renderHook(() => useRunMission());
+
+    await act(async () => {
+      result.current.runMission('First');
+    });
+
+    act(() => {
+      result.current.clearConversation();
+    });
+
+    expect(result.current.messages).toEqual([]);
+
+    await act(async () => {
+      result.current.runMission('Second');
+    });
+
+    expect(result.current.messages).toHaveLength(2);
+    expect(result.current.messages[0].content).toBe('Second');
+    expect(result.current.messages[1].content).toBe('Response');
+  });
+
+  it('accumulates messages across multiple sequential missions', async () => {
+    vi.mocked(agentStream.streamAgentMission).mockImplementation(async (_, callbacks) => {
+      callbacks.onComplete();
+    });
+
+    const { result } = renderHook(() => useRunMission());
+
+    await act(async () => {
+      result.current.runMission('First');
+    });
+
+    await act(async () => {
+      result.current.runMission('Second');
+    });
+
+    // 2 user messages + 2 agent messages = 4
+    expect(result.current.messages).toHaveLength(4);
+    expect(result.current.messages[0].content).toBe('First');
+    expect(result.current.messages[2].content).toBe('Second');
+  });
+
+  it('transitions thought status from executing to complete', async () => {
+    let capturedCallbacks!: agentStream.AgentStreamCallbacks;
+    vi.mocked(agentStream.streamAgentMission).mockImplementation(async (_, callbacks) => {
+      capturedCallbacks = callbacks;
+    });
+
+    const { result } = renderHook(() => useRunMission());
+
+    await act(async () => {
+      result.current.runMission('Test');
+    });
+
+    // Add first thought — should be executing
+    await act(async () => {
+      capturedCallbacks.onThought('Step 1');
+    });
+
+    let agentMsg = result.current.messages.find((m) => m.role === 'agent') as AgentMessage;
+    expect(agentMsg.thoughts[0].status).toBe('executing');
+
+    // Add second thought — first should become complete, second executing
+    await act(async () => {
+      capturedCallbacks.onThought('Step 2');
+    });
+
+    agentMsg = result.current.messages.find((m) => m.role === 'agent') as AgentMessage;
+    expect(agentMsg.thoughts[0].status).toBe('complete');
+    expect(agentMsg.thoughts[1].status).toBe('executing');
+
+    // Complete — all should be complete
+    await act(async () => {
+      capturedCallbacks.onComplete();
+    });
+
+    agentMsg = result.current.messages.find((m) => m.role === 'agent') as AgentMessage;
+    expect(agentMsg.thoughts[0].status).toBe('complete');
+    expect(agentMsg.thoughts[1].status).toBe('complete');
   });
 });
