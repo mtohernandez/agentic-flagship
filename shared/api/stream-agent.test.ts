@@ -10,12 +10,14 @@ import { apiStream } from './client';
 describe('streamAgentMission', () => {
   const createMockCallbacks = (): AgentStreamCallbacks & {
     tokens: string[];
-    thoughts: string[];
+    toolStarts: string[];
+    toolEnds: string[];
     errors: Error[];
     completeCalls: number;
   } => {
     const tokens: string[] = [];
-    const thoughts: string[] = [];
+    const toolStarts: string[] = [];
+    const toolEnds: string[] = [];
     const errors: Error[] = [];
     let completeCalls = 0;
 
@@ -23,8 +25,11 @@ describe('streamAgentMission', () => {
       get tokens() {
         return tokens;
       },
-      get thoughts() {
-        return thoughts;
+      get toolStarts() {
+        return toolStarts;
+      },
+      get toolEnds() {
+        return toolEnds;
       },
       get errors() {
         return errors;
@@ -35,8 +40,11 @@ describe('streamAgentMission', () => {
       onToken: vi.fn((content: string) => {
         tokens.push(content);
       }),
-      onThought: vi.fn((content: string) => {
-        thoughts.push(content);
+      onToolStart: vi.fn((toolName: string) => {
+        toolStarts.push(toolName);
+      }),
+      onToolEnd: vi.fn((toolName: string) => {
+        toolEnds.push(toolName);
       }),
       onComplete: vi.fn(() => {
         completeCalls++;
@@ -76,22 +84,72 @@ describe('streamAgentMission', () => {
     expect(callbacks.tokens).toContain('Hello');
   });
 
-  it('calls onThought for thought events', async () => {
+  it('calls onToolStart for tool_start events', async () => {
     const callbacks = createMockCallbacks();
     vi.mocked(apiStream).mockResolvedValueOnce(
-      createMockSSEStream([{ data: '{"type":"thought","content":"Thinking..."}' }])
+      createMockSSEStream([{ data: '{"type":"tool_start","content":"fetch_page"}' }])
     );
 
     await streamAgentMission('test prompt', callbacks);
 
-    expect(callbacks.onThought).toHaveBeenCalledWith('Thinking...');
-    expect(callbacks.thoughts).toContain('Thinking...');
+    expect(callbacks.onToolStart).toHaveBeenCalledWith('fetch_page');
+    expect(callbacks.toolStarts).toContain('fetch_page');
   });
 
-  it('calls onComplete when stream ends', async () => {
+  it('calls onToolEnd for tool_end events', async () => {
     const callbacks = createMockCallbacks();
     vi.mocked(apiStream).mockResolvedValueOnce(
-      createMockSSEStream([{ data: '{"type":"token","content":"Done"}' }])
+      createMockSSEStream([{ data: '{"type":"tool_end","content":"fetch_page"}' }])
+    );
+
+    await streamAgentMission('test prompt', callbacks);
+
+    expect(callbacks.onToolEnd).toHaveBeenCalledWith('fetch_page');
+    expect(callbacks.toolEnds).toContain('fetch_page');
+  });
+
+  it('calls onComplete for done events', async () => {
+    const callbacks = createMockCallbacks();
+    vi.mocked(apiStream).mockResolvedValueOnce(
+      createMockSSEStream([{ data: '{"type":"done","content":""}' }])
+    );
+
+    await streamAgentMission('test prompt', callbacks);
+
+    expect(callbacks.onComplete).toHaveBeenCalled();
+    expect(callbacks.completeCalls).toBe(1);
+  });
+
+  it('calls onError for error events', async () => {
+    const callbacks = createMockCallbacks();
+    vi.mocked(apiStream).mockResolvedValueOnce(
+      createMockSSEStream([{ data: '{"type":"error","content":"Timeout exceeded"}' }])
+    );
+
+    await streamAgentMission('test prompt', callbacks);
+
+    expect(callbacks.onError).toHaveBeenCalled();
+    expect(callbacks.errors[0].message).toBe('Timeout exceeded');
+  });
+
+  it('does not double-call onComplete when done event received', async () => {
+    const callbacks = createMockCallbacks();
+    vi.mocked(apiStream).mockResolvedValueOnce(
+      createMockSSEStream([
+        { data: '{"type":"token","content":"Hello"}' },
+        { data: '{"type":"done","content":""}' },
+      ])
+    );
+
+    await streamAgentMission('test prompt', callbacks);
+
+    expect(callbacks.completeCalls).toBe(1);
+  });
+
+  it('calls onComplete on stream end if no done event received', async () => {
+    const callbacks = createMockCallbacks();
+    vi.mocked(apiStream).mockResolvedValueOnce(
+      createMockSSEStream([{ data: '{"type":"token","content":"Hello"}' }])
     );
 
     await streamAgentMission('test prompt', callbacks);
@@ -124,14 +182,20 @@ describe('streamAgentMission', () => {
     const callbacks = createMockCallbacks();
     vi.mocked(apiStream).mockResolvedValueOnce(
       createMockSSEStream([
+        { data: '{"type":"tool_start","content":"fetch_page"}' },
         { data: '{"type":"token","content":"Hello "}' },
         { data: '{"type":"token","content":"world"}' },
+        { data: '{"type":"tool_end","content":"fetch_page"}' },
+        { data: '{"type":"done","content":""}' },
       ])
     );
 
     await streamAgentMission('test prompt', callbacks);
 
     expect(callbacks.tokens).toEqual(['Hello ', 'world']);
+    expect(callbacks.toolStarts).toEqual(['fetch_page']);
+    expect(callbacks.toolEnds).toEqual(['fetch_page']);
+    expect(callbacks.completeCalls).toBe(1);
   });
 
   it('skips malformed JSON', async () => {

@@ -106,10 +106,9 @@ describe('useRunMission', () => {
     expect(agentMessage?.content).toBe('Hello World');
   });
 
-  it('adds thoughts on thought callback', async () => {
+  it('adds thought on onToolStart callback', async () => {
     vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
-      callbacks.onThought('Thinking step 1');
-      callbacks.onThought('Thinking step 2');
+      callbacks.onToolStart('fetch_page');
       callbacks.onComplete();
     });
 
@@ -121,11 +120,89 @@ describe('useRunMission', () => {
 
     const agentMessage = result.current.messages.find((m) => m.role === 'agent');
     expect(agentMessage).toBeDefined();
-    expect(agentMessage!.role).toBe('agent');
     const agentMsg = agentMessage as AgentMessage;
+    expect(agentMsg.thoughts).toHaveLength(1);
+    expect(agentMsg.thoughts[0].content).toBe('fetch_page');
+    expect(agentMsg.thoughts[0].type).toBe('action');
+  });
+
+  it('marks thought as complete on onToolEnd callback', async () => {
+    let capturedCallbacks!: api.AgentStreamCallbacks;
+    vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
+      capturedCallbacks = callbacks;
+    });
+
+    const { result } = renderHook(() => useRunMission());
+
+    await act(async () => {
+      result.current.runMission('Test');
+    });
+
+    await act(async () => {
+      capturedCallbacks.onToolStart('fetch_page');
+    });
+
+    let agentMsg = result.current.messages.find((m) => m.role === 'agent') as AgentMessage;
+    expect(agentMsg.thoughts[0].status).toBe('executing');
+
+    await act(async () => {
+      capturedCallbacks.onToolEnd('fetch_page');
+    });
+
+    agentMsg = result.current.messages.find((m) => m.role === 'agent') as AgentMessage;
+    expect(agentMsg.thoughts[0].status).toBe('complete');
+  });
+
+  it('handles tool start/end lifecycle with multiple tools', async () => {
+    let capturedCallbacks!: api.AgentStreamCallbacks;
+    vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
+      capturedCallbacks = callbacks;
+    });
+
+    const { result } = renderHook(() => useRunMission());
+
+    await act(async () => {
+      result.current.runMission('Test');
+    });
+
+    // Start first tool
+    await act(async () => {
+      capturedCallbacks.onToolStart('fetch_page');
+    });
+
+    let agentMsg = result.current.messages.find((m) => m.role === 'agent') as AgentMessage;
+    expect(agentMsg.thoughts).toHaveLength(1);
+    expect(agentMsg.thoughts[0].status).toBe('executing');
+    expect(agentMsg.activeThoughtId).toBe(agentMsg.thoughts[0].id);
+
+    // End first tool
+    await act(async () => {
+      capturedCallbacks.onToolEnd('fetch_page');
+    });
+
+    agentMsg = result.current.messages.find((m) => m.role === 'agent') as AgentMessage;
+    expect(agentMsg.thoughts[0].status).toBe('complete');
+    expect(agentMsg.activeThoughtId).toBeUndefined();
+
+    // Start second tool
+    await act(async () => {
+      capturedCallbacks.onToolStart('parse_html');
+    });
+
+    agentMsg = result.current.messages.find((m) => m.role === 'agent') as AgentMessage;
     expect(agentMsg.thoughts).toHaveLength(2);
-    expect(agentMsg.thoughts[0].content).toBe('Thinking step 1');
-    expect(agentMsg.thoughts[1].content).toBe('Thinking step 2');
+    expect(agentMsg.thoughts[1].status).toBe('executing');
+    expect(agentMsg.activeThoughtId).toBe(agentMsg.thoughts[1].id);
+
+    // Complete all
+    await act(async () => {
+      capturedCallbacks.onComplete();
+    });
+
+    agentMsg = result.current.messages.find((m) => m.role === 'agent') as AgentMessage;
+    expect(agentMsg.thoughts[0].status).toBe('complete');
+    expect(agentMsg.thoughts[1].status).toBe('complete');
+    expect(agentMsg.activeThoughtId).toBeUndefined();
   });
 
   it('marks agent message as complete on completion', async () => {
@@ -159,8 +236,9 @@ describe('useRunMission', () => {
     expect(result.current.isExecuting).toBe(false);
   });
 
-  it('handles errors correctly', async () => {
+  it('handles errors correctly and completes executing thoughts', async () => {
     vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
+      callbacks.onToolStart('fetch_page');
       callbacks.onError(new Error('Test error'));
     });
 
@@ -174,7 +252,10 @@ describe('useRunMission', () => {
     expect(agentMessage).toBeDefined();
     expect(agentMessage!.content).toBe('Error: Test error');
     expect(agentMessage!.role).toBe('agent');
-    expect((agentMessage as AgentMessage).status).toBe('error');
+    const agentMsg = agentMessage as AgentMessage;
+    expect(agentMsg.status).toBe('error');
+    expect(agentMsg.thoughts[0].status).toBe('complete');
+    expect(agentMsg.activeThoughtId).toBeUndefined();
     expect(result.current.isExecuting).toBe(false);
   });
 
@@ -198,10 +279,10 @@ describe('useRunMission', () => {
     expect(result.current.messages).toEqual([]);
   });
 
-  it('marks previous thoughts as complete when new thought arrives', async () => {
+  it('marks all thoughts as complete on completion (safety net)', async () => {
     vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
-      callbacks.onThought('First thought');
-      callbacks.onThought('Second thought');
+      callbacks.onToolStart('fetch_page');
+      callbacks.onToolStart('parse_html');
       callbacks.onComplete();
     });
 
@@ -213,13 +294,12 @@ describe('useRunMission', () => {
 
     const agentMessage = result.current.messages.find((m) => m.role === 'agent');
     expect(agentMessage).toBeDefined();
-    expect(agentMessage!.role).toBe('agent');
     const agentMsg = agentMessage as AgentMessage;
     expect(agentMsg.thoughts[0].status).toBe('complete');
     expect(agentMsg.thoughts[1].status).toBe('complete');
   });
 
-  it('sets activeThoughtId during thought callbacks and clears on complete', async () => {
+  it('sets activeThoughtId during onToolStart and clears on complete', async () => {
     let capturedCallbacks!: api.AgentStreamCallbacks;
     vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
       capturedCallbacks = callbacks;
@@ -231,9 +311,9 @@ describe('useRunMission', () => {
       result.current.runMission('Test');
     });
 
-    // Fire a thought and check activeThoughtId is set
+    // Fire a tool start and check activeThoughtId is set
     await act(async () => {
-      capturedCallbacks.onThought('Thinking...');
+      capturedCallbacks.onToolStart('fetch_page');
     });
 
     let agentMsg = result.current.messages.find((m) => m.role === 'agent') as AgentMessage;
@@ -295,44 +375,5 @@ describe('useRunMission', () => {
     expect(result.current.messages).toHaveLength(4);
     expect(result.current.messages[0].content).toBe('First');
     expect(result.current.messages[2].content).toBe('Second');
-  });
-
-  it('transitions thought status from executing to complete', async () => {
-    let capturedCallbacks!: api.AgentStreamCallbacks;
-    vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
-      capturedCallbacks = callbacks;
-    });
-
-    const { result } = renderHook(() => useRunMission());
-
-    await act(async () => {
-      result.current.runMission('Test');
-    });
-
-    // Add first thought — should be executing
-    await act(async () => {
-      capturedCallbacks.onThought('Step 1');
-    });
-
-    let agentMsg = result.current.messages.find((m) => m.role === 'agent') as AgentMessage;
-    expect(agentMsg.thoughts[0].status).toBe('executing');
-
-    // Add second thought — first should become complete, second executing
-    await act(async () => {
-      capturedCallbacks.onThought('Step 2');
-    });
-
-    agentMsg = result.current.messages.find((m) => m.role === 'agent') as AgentMessage;
-    expect(agentMsg.thoughts[0].status).toBe('complete');
-    expect(agentMsg.thoughts[1].status).toBe('executing');
-
-    // Complete — all should be complete
-    await act(async () => {
-      capturedCallbacks.onComplete();
-    });
-
-    agentMsg = result.current.messages.find((m) => m.role === 'agent') as AgentMessage;
-    expect(agentMsg.thoughts[0].status).toBe('complete');
-    expect(agentMsg.thoughts[1].status).toBe('complete');
   });
 });

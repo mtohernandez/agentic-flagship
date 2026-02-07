@@ -37,21 +37,36 @@ export function useRunMission() {
             )
           );
         },
-        onThought: (content) => {
-          const thought = createThought(content, 'action', 'executing');
+        onToolStart: (toolName) => {
+          const thought = createThought(toolName, 'action', 'executing');
           setMessages((prev) =>
             prev.map((msg) => {
               if (msg.id !== agentMessage.id || msg.role !== 'agent') return msg;
               const agentMsg = msg as AgentMessage;
-              // Mark previous thoughts as complete, add new executing thought
-              const updatedThoughts = agentMsg.thoughts.map((t) => ({
-                ...t,
-                status: 'complete' as const,
-              }));
               return {
                 ...agentMsg,
-                thoughts: [...updatedThoughts, thought],
+                thoughts: [...agentMsg.thoughts, thought],
                 activeThoughtId: thought.id,
+              };
+            })
+          );
+        },
+        onToolEnd: (toolName) => {
+          setMessages((prev) =>
+            prev.map((msg) => {
+              if (msg.id !== agentMessage.id || msg.role !== 'agent') return msg;
+              const agentMsg = msg as AgentMessage;
+              const updatedThoughts = agentMsg.thoughts.map((t) => {
+                if (t.content === toolName && t.status === 'executing') {
+                  return { ...t, status: 'complete' as const };
+                }
+                return t;
+              });
+              const stillExecuting = updatedThoughts.find((t) => t.status === 'executing');
+              return {
+                ...agentMsg,
+                thoughts: updatedThoughts,
+                activeThoughtId: stillExecuting?.id ?? undefined,
               };
             })
           );
@@ -79,11 +94,24 @@ export function useRunMission() {
         },
         onError: (error) => {
           setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === agentMessage.id
-                ? { ...msg, content: `Error: ${error.message}`, status: 'error' as const }
-                : msg
-            )
+            prev.map((msg) => {
+              if (msg.id !== agentMessage.id) return msg;
+              if (msg.role === 'agent') {
+                const agentMsg = msg as AgentMessage;
+                const completedThoughts = agentMsg.thoughts.map((t) => ({
+                  ...t,
+                  status: 'complete' as const,
+                }));
+                return {
+                  ...agentMsg,
+                  content: `Error: ${error.message}`,
+                  status: 'error' as const,
+                  thoughts: completedThoughts,
+                  activeThoughtId: undefined,
+                };
+              }
+              return { ...msg, content: `Error: ${error.message}`, status: 'error' as const };
+            })
           );
           currentAgentMessageId.current = null;
           setIsExecuting(false);

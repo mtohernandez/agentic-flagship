@@ -2,12 +2,6 @@ import { render, screen } from '@testing-library/react';
 import { ChatPanel } from './ChatPanel';
 import type { Message } from '@/entities/message';
 
-vi.mock('./ChatHeader', () => ({
-  ChatHeader: ({ messageCount, onClear }: { messageCount: number; onClear: () => void }) => (
-    <div data-testid="chat-header" data-count={messageCount} onClick={onClear} />
-  ),
-}));
-
 vi.mock('@/entities/message', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/entities/message')>();
   return {
@@ -27,8 +21,24 @@ vi.mock('@/entities/agent', () => ({
 }));
 
 vi.mock('@/features/run-mission', () => ({
-  MissionForm: ({ onSubmit, isLoading }: { onSubmit: (p: string) => void; isLoading: boolean }) => (
-    <div data-testid="mission-form" data-loading={isLoading} onClick={() => onSubmit('test')} />
+  MissionForm: ({
+    onSubmit,
+    isLoading,
+    messageCount,
+    onClear,
+  }: {
+    onSubmit: (p: string) => void;
+    isLoading: boolean;
+    messageCount: number;
+    onClear: () => void;
+  }) => (
+    <div
+      data-testid="mission-form"
+      data-loading={isLoading}
+      data-message-count={messageCount}
+      onClick={() => onSubmit('test')}
+      onDoubleClick={onClear}
+    />
   ),
 }));
 
@@ -43,7 +53,6 @@ describe('ChatPanel', () => {
   it('renders all child components', () => {
     render(<ChatPanel {...defaultProps} />);
 
-    expect(screen.getByTestId('chat-header')).toBeInTheDocument();
     expect(screen.getByTestId('message-list')).toBeInTheDocument();
     expect(screen.getByTestId('thinking-indicator')).toBeInTheDocument();
     expect(screen.getByTestId('mission-form')).toBeInTheDocument();
@@ -55,9 +64,9 @@ describe('ChatPanel', () => {
       <ChatPanel messages={messages} isLoading={true} onSendMessage={vi.fn()} onClear={vi.fn()} />
     );
 
-    expect(screen.getByTestId('chat-header')).toHaveAttribute('data-count', '1');
     expect(screen.getByTestId('message-list')).toHaveAttribute('data-count', '1');
     expect(screen.getByTestId('thinking-indicator')).toHaveAttribute('data-thinking', 'true');
     expect(screen.getByTestId('mission-form')).toHaveAttribute('data-loading', 'true');
+    expect(screen.getByTestId('mission-form')).toHaveAttribute('data-message-count', '1');
   });
 });

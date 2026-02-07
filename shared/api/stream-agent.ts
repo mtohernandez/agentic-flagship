@@ -4,7 +4,8 @@ import type { SSEEvent } from './types';
 
 export interface AgentStreamCallbacks {
   onToken: (content: string) => void;
-  onThought: (content: string) => void;
+  onToolStart: (toolName: string) => void;
+  onToolEnd: (toolName: string) => void;
   onComplete: () => void;
   onError: (error: Error) => void;
 }
@@ -13,6 +14,8 @@ export async function streamAgentMission(
   prompt: string,
   callbacks: AgentStreamCallbacks
 ): Promise<void> {
+  let doneReceived = false;
+
   try {
     const stream = await apiStream(
       API_ROUTES.agent.runMission + '?prompt=' + encodeURIComponent(prompt)
@@ -23,23 +26,44 @@ export async function streamAgentMission(
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      handleSSEEvent(value, callbacks);
+      handleSSEEvent(value, callbacks, () => {
+        doneReceived = true;
+      });
     }
 
-    callbacks.onComplete();
+    if (!doneReceived) {
+      callbacks.onComplete();
+    }
   } catch (error) {
     callbacks.onError(error instanceof Error ? error : new Error(String(error)));
   }
 }
 
-function handleSSEEvent(event: SSEEvent, callbacks: AgentStreamCallbacks): void {
+function handleSSEEvent(
+  event: SSEEvent,
+  callbacks: AgentStreamCallbacks,
+  markDone: () => void
+): void {
   try {
     const data = JSON.parse(event.data);
 
-    if (data.type === 'token') {
-      callbacks.onToken(data.content);
-    } else if (data.type === 'thought') {
-      callbacks.onThought(data.content);
+    switch (data.type) {
+      case 'token':
+        callbacks.onToken(data.content);
+        break;
+      case 'tool_start':
+        callbacks.onToolStart(data.content);
+        break;
+      case 'tool_end':
+        callbacks.onToolEnd(data.content);
+        break;
+      case 'done':
+        markDone();
+        callbacks.onComplete();
+        break;
+      case 'error':
+        callbacks.onError(new Error(data.content));
+        break;
     }
   } catch {
     // Skip malformed JSON

@@ -17,7 +17,7 @@ export function MessageList({ messages, children }: MessageListProps) {
   }, [messages]);
 
   return (
-    <div className="flex-1 overflow-y-auto space-y-4 p-4">
+    <div className="flex-1 overflow-y-auto space-y-4 p-4 pb-52">
       {messages.length === 0 ? (
         <div className="flex items-center justify-center h-full text-muted-foreground">
           Start a conversation by typing a message below

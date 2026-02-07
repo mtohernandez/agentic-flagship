@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getBackendUrl } from './server-config';
+import { getBackendUrl, getAgentApiKey } from './server-config';
 
 export interface ProxyHandlerOptions {
   upstream: string;
@@ -10,14 +10,17 @@ export interface ProxyHandlerOptions {
 export function createProxyHandler(options: ProxyHandlerOptions) {
   return async (req: NextRequest): Promise<NextResponse | Response> => {
     let backendUrl: string;
+    let apiKey: string;
     try {
       backendUrl = getBackendUrl();
+      apiKey = getAgentApiKey();
     } catch {
       return NextResponse.json({ error: 'Backend not configured' }, { status: 500 });
     }
 
     let url = `${backendUrl}${options.upstream}`;
 
+    const headers: Record<string, string> = { 'X-API-Key': apiKey };
     const fetchInit: RequestInit = { method: options.method };
 
     if (options.method === 'GET') {
@@ -28,12 +31,14 @@ export function createProxyHandler(options: ProxyHandlerOptions) {
     } else {
       try {
         const body = await req.json();
-        fetchInit.headers = { 'Content-Type': 'application/json' };
+        headers['Content-Type'] = 'application/json';
         fetchInit.body = JSON.stringify(body);
       } catch {
         // No body to forward
       }
     }
+
+    fetchInit.headers = headers;
 
     let response: Response;
     try {
