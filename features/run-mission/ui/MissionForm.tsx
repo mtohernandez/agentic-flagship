@@ -1,7 +1,14 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { RiCloseLine, RiAddLine, RiArrowUpLine, RiSettings3Line } from '@remixicon/react';
+import Image from 'next/image';
+import {
+  RiCloseLine,
+  RiAddLine,
+  RiArrowUpLine,
+  RiSettings3Line,
+  RiSettings3Fill,
+} from '@remixicon/react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,6 +22,8 @@ import {
 import { FieldError } from '@/components/ui/field';
 import { SpinnerDotted } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/shared/i18n';
+import type { ValidationTranslations } from '@/shared/i18n';
 import { SCRAPE_ACTIONS } from '../model/types';
 import type { ScrapeAction, ScrapeJob } from '../model/types';
 import { buildPrompt } from '../model/build-prompt';
@@ -33,12 +42,15 @@ export function MissionForm({
   messageCount,
   onClear,
 }: MissionFormProps) {
+  const { t } = useTranslation();
   const [urlInput, setUrlInput] = useState('');
   const [jobs, setJobs] = useState<ScrapeJob[]>([]);
   const [action, setAction] = useState<ScrapeAction>('extract-text');
   const [instructions, setInstructions] = useState('');
-  const [urlError, setUrlError] = useState<string | undefined>();
-  const [instructionsError, setInstructionsError] = useState<string | undefined>();
+  const [urlError, setUrlError] = useState<keyof ValidationTranslations | undefined>();
+  const [instructionsError, setInstructionsError] = useState<
+    keyof ValidationTranslations | undefined
+  >();
   const [showInstructions, setShowInstructions] = useState(false);
 
   const [pendingPrompts, setPendingPrompts] = useState<string[]>([]);
@@ -130,15 +142,47 @@ export function MissionForm({
 
   const actionLabel = (a: ScrapeAction) => {
     const opt = SCRAPE_ACTIONS.find((o) => o.value === a);
-    return opt ? opt.label : a;
+    return opt ? t('mission', opt.labelKey) : a;
   };
 
   const currentActionOption = SCRAPE_ACTIONS.find((a) => a.value === action)!;
   const processedCount = totalQueued - pendingPrompts.length;
 
   return (
-    <div className={cn('fixed bottom-4 left-0 right-0 px-4 z-10')}>
+    <div
+      className={cn(
+        'fixed left-0 right-0 px-4 z-10 transition-[bottom] duration-500 ease-in-out',
+        messageCount > 0 ? 'bottom-4' : 'bottom-[35%]'
+      )}
+    >
       <div className="relative max-w-2xl mx-auto pointer-events-auto">
+        <div
+          className={cn(
+            'grid transition-[grid-template-rows,opacity] duration-500 ease-in-out',
+            messageCount === 0 ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+          )}
+        >
+          <div className="overflow-hidden">
+            <div className="flex flex-col items-center gap-6 max-w-sm mx-auto text-center mb-8">
+              <Image
+                src="/agentic-logo.svg"
+                alt="Agentic"
+                width={48}
+                height={48}
+                className="h-12 w-12 opacity-80 dark:invert-0 invert"
+                priority
+              />
+              <div className="space-y-2">
+                <h2 className="text-lg font-semibold text-foreground">
+                  {t('message', 'welcomeTitle')}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {t('message', 'welcomeDescription')}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
         <div className="flex flex-col rounded-xl border bg-card p-3 shadow-lg">
           {/* Job mini-cards */}
           {jobs.length > 0 && (
@@ -155,7 +199,10 @@ export function MissionForm({
                     onClick={() => removeJob(i)}
                     disabled={isProcessing}
                     className="absolute -top-1.5 -right-1.5 size-4 rounded-full bg-muted flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
-                    aria-label={`Remove ${hostname(job.url)} ${actionLabel(job.action)}`}
+                    aria-label={t('mission', 'removeJob', {
+                      hostname: hostname(job.url),
+                      action: actionLabel(job.action),
+                    })}
                   >
                     <RiCloseLine className="size-3" />
                   </button>
@@ -168,19 +215,23 @@ export function MissionForm({
           <div className="flex items-center gap-1.5 rounded-lg border bg-background p-2">
             <Select
               value={action}
-              onValueChange={(v) => setAction(v as ScrapeAction)}
+              onValueChange={(v) => {
+                const newAction = v as ScrapeAction;
+                setAction(newAction);
+                if (newAction === 'custom') setShowInstructions(true);
+              }}
               disabled={isProcessing}
             >
               <SelectTrigger
                 className="border-0 bg-secondary/60 rounded-lg h-8 w-auto max-w-35 text-xs shadow-none focus:ring-0"
-                aria-label="Scrape action"
+                aria-label={t('mission', 'scrapeAction')}
               >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {SCRAPE_ACTIONS.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
+                    {t('mission', opt.labelKey)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -195,7 +246,7 @@ export function MissionForm({
               onKeyDown={handleUrlKeyDown}
               placeholder="https://..."
               disabled={isProcessing}
-              aria-label="URL input"
+              aria-label={t('mission', 'urlInput')}
               className="flex-1 border-0 shadow-none focus-visible:ring-0 h-8 text-sm"
             />
 
@@ -206,9 +257,13 @@ export function MissionForm({
               className="size-8 shrink-0"
               onClick={() => setShowInstructions((v) => !v)}
               disabled={isProcessing}
-              aria-label="Toggle instructions"
+              aria-label={t('mission', 'toggleInstructions')}
             >
-              <RiSettings3Line className="size-4" />
+              {showInstructions ? (
+                <RiSettings3Fill className="size-4" />
+              ) : (
+                <RiSettings3Line className="size-4" />
+              )}
             </Button>
 
             <Button
@@ -218,7 +273,7 @@ export function MissionForm({
               className="size-8 shrink-0"
               onClick={addJob}
               disabled={isProcessing || !urlInput.trim()}
-              aria-label="Add Job"
+              aria-label={t('mission', 'addJob')}
             >
               <RiAddLine className="size-4" />
             </Button>
@@ -230,11 +285,13 @@ export function MissionForm({
               className="size-8 shrink-0 rounded-lg"
               onClick={handleSubmit}
               disabled={!canSubmit(jobs) || isProcessing}
-              aria-label="Run"
+              aria-label={t('mission', 'run')}
             >
               {isLoading ? <SpinnerDotted /> : <RiArrowUpLine className="size-4" />}
               <span className="sr-only">
-                {jobs.length > 0 ? `Run ${jobs.length} job${jobs.length === 1 ? '' : 's'}` : 'Run'}
+                {jobs.length > 0
+                  ? t('mission', 'runCountLabel', { count: jobs.length })
+                  : t('mission', 'run')}
               </span>
             </Button>
 
@@ -246,7 +303,7 @@ export function MissionForm({
                 className="size-8 shrink-0"
                 onClick={onClear}
                 disabled={isProcessing}
-                aria-label="Clear chat"
+                aria-label={t('mission', 'clearChat')}
               >
                 <RiCloseLine className="size-4" />
               </Button>
@@ -254,7 +311,7 @@ export function MissionForm({
           </div>
 
           {/* URL error */}
-          {urlError && <FieldError className="mt-2">{urlError}</FieldError>}
+          {urlError && <FieldError className="mt-2">{t('validation', urlError)}</FieldError>}
 
           {/* Collapsible instructions */}
           <div
@@ -271,13 +328,13 @@ export function MissionForm({
                     setInstructions(e.target.value);
                     if (instructionsError) setInstructionsError(undefined);
                   }}
-                  placeholder={currentActionOption.hint}
+                  placeholder={t('mission', currentActionOption.hintKey)}
                   rows={2}
                   disabled={isProcessing}
                   className="min-h-0 resize-none"
-                  aria-label="Additional instructions"
+                  aria-label={t('mission', 'additionalInstructions')}
                 />
-                {instructionsError && <FieldError>{instructionsError}</FieldError>}
+                {instructionsError && <FieldError>{t('validation', instructionsError)}</FieldError>}
               </div>
             </div>
           </div>
@@ -287,16 +344,19 @@ export function MissionForm({
             <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground mt-2">
               <SpinnerDotted />
               <span>
-                Processing {processedCount} of {totalQueued} jobs...
+                {t('mission', 'queueProgress', {
+                  current: processedCount,
+                  total: totalQueued,
+                })}
               </span>
               <Button
                 type="button"
                 variant="ghost"
                 size="xs"
                 onClick={cancelQueue}
-                aria-label="Cancel queue"
+                aria-label={t('mission', 'cancelQueue')}
               >
-                Cancel
+                {t('mission', 'cancel')}
               </Button>
             </div>
           )}

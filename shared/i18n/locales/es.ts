@@ -1,0 +1,61 @@
+import type { TranslationNamespaces } from '../types';
+
+export const es: TranslationNamespaces = {
+  common: {
+    toggleDarkMode: 'Alternar modo oscuro',
+    switchLanguage: 'Cambiar idioma',
+  },
+  mission: {
+    extractTextLabel: 'Extraer contenido de texto',
+    extractTextHint: 'ej., "Solo el cuerpo del artículo principal"',
+    extractProductsLabel: 'Extraer datos de productos',
+    extractProductsHint: 'ej., "Incluir precios y disponibilidad"',
+    extractContactsLabel: 'Extraer información de contacto',
+    extractContactsHint: 'ej., "Buscar correos electrónicos y teléfonos"',
+    extractLinksLabel: 'Extraer enlaces',
+    extractLinksHint: 'ej., "Solo enlaces externos"',
+    summarizeLabel: 'Resumir página',
+    summarizeHint: 'ej., "Enfocarse en datos clave"',
+    customLabel: 'Instrucciones personalizadas',
+    customHint: 'Describe lo que quieres que el agente haga...',
+    scrapeAction: 'Acción de extracción',
+    urlInput: 'Entrada de URL',
+    toggleInstructions: 'Alternar instrucciones',
+    addJob: 'Agregar tarea',
+    run: 'Ejecutar',
+    runCountLabel: 'Ejecutar {count} tareas',
+    runCountLabel_one: 'Ejecutar {count} tarea',
+    runCountLabel_other: 'Ejecutar {count} tareas',
+    clearChat: 'Limpiar chat',
+    removeJob: 'Eliminar {hostname} {action}',
+    additionalInstructions: 'Instrucciones adicionales',
+    cancel: 'Cancelar',
+    cancelQueue: 'Cancelar cola',
+    queueProgress: 'Procesando {current} de {total} tareas...',
+  },
+  validation: {
+    urlInvalid: 'La URL debe comenzar con http:// o https://',
+    urlDuplicate: 'URL ya agregada',
+    jobDuplicate: 'Tarea ya agregada',
+    instructionsRequired: 'Se requieren instrucciones para la acción personalizada',
+  },
+  message: {
+    roleUser: 'Tú',
+    roleAgent: 'Agente',
+    defaultError: 'Ocurrió un error inesperado.',
+    welcomeTitle: 'Bienvenido a Agentic',
+    welcomeDescription:
+      'Tu asistente de extracción web impulsado por IA. Pega una URL, elige una acción y deja que el agente haga el trabajo.',
+  },
+  agent: {
+    thinking: 'Pensando...',
+    stillWorking: 'Aún trabajando...',
+    completedSteps: 'Completado en {count} pasos',
+    completedSteps_one: 'Completado en {count} paso',
+    completedSteps_other: 'Completado en {count} pasos',
+    agentThinking: 'El agente está pensando...',
+    emptyResponseError:
+      'Error: El agente devolvió una respuesta vacía. Esto puede deberse a límites de velocidad — intenta de nuevo en breve.',
+    genericError: 'Error: {message}',
+  },
+};

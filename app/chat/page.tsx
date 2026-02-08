@@ -3,6 +3,7 @@
 import { useRunMission } from '@/features/run-mission';
 import { ChatPanel } from '@/widgets/chat-panel';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { LanguageSwitcher } from '@/components/language-switcher';
 import { DevToolbar } from '@/components/dev/DevToolbar';
 import { useDevToolbar } from '@/components/dev/useDevToolbar';
 
@@ -12,10 +13,11 @@ export default function ChatPage() {
 
   return (
     <main className="relative flex flex-col h-screen bg-background text-foreground">
-      <div className="absolute top-3 right-4 z-20">
+      <div className="absolute top-3 right-4 z-20 flex items-center gap-1">
+        <LanguageSwitcher />
         <ThemeToggle />
       </div>
-      <div className="flex-1 flex justify-center overflow-hidden">
+      <div className="flex-1 flex justify-center overflow-y-auto scrollbar-hidden">
         <div className="w-full max-w-2xl flex flex-col h-full">
           <ChatPanel
             messages={toolbar.devMessages ?? messages}

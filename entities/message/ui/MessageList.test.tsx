@@ -8,13 +8,6 @@ vi.mock('./MessageBubble', () => ({
   ),
 }));
 
-vi.mock('next/image', () => ({
-  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img {...props} />
-  ),
-}));
-
 // scrollIntoView is not implemented in jsdom
 Element.prototype.scrollIntoView = vi.fn();
 
@@ -26,11 +19,10 @@ const makeMessage = (id: string, content: string): Message => ({
 });
 
 describe('MessageList', () => {
-  it('shows welcome state when no messages', () => {
-    render(<MessageList messages={[]} />);
+  it('returns null when no messages', () => {
+    const { container } = render(<MessageList messages={[]} />);
 
-    expect(screen.getByText('Welcome to Agentic')).toBeInTheDocument();
-    expect(screen.getByAltText('Agentic')).toBeInTheDocument();
+    expect(container.innerHTML).toBe('');
   });
 
   it('renders a MessageBubble per message', () => {
@@ -42,19 +34,13 @@ describe('MessageList', () => {
   });
 
   it('renders children slot', () => {
+    const messages = [makeMessage('1', 'Hello')];
     render(
-      <MessageList messages={[]}>
+      <MessageList messages={messages}>
         <div data-testid="child-slot">Child content</div>
       </MessageList>
     );
 
     expect(screen.getByTestId('child-slot')).toBeInTheDocument();
-  });
-
-  it('hides welcome state when messages exist', () => {
-    const messages = [makeMessage('1', 'Hello')];
-    render(<MessageList messages={messages} />);
-
-    expect(screen.queryByText('Welcome to Agentic')).not.toBeInTheDocument();
   });
 });

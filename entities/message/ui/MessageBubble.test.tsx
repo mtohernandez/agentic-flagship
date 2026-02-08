@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { MessageBubble } from './MessageBubble';
+import { I18nTestWrapper } from '@/shared/i18n';
 import type { UserMessage, AgentMessage } from '../model/types';
 
 vi.mock('@/entities/agent', () => ({
@@ -41,25 +42,33 @@ const makeAgentMessage = (overrides: Partial<AgentMessage> = {}): AgentMessage =
 
 describe('MessageBubble', () => {
   it('right-aligns user messages', () => {
-    const { container } = render(<MessageBubble message={makeUserMessage('Hello')} />);
+    const { container } = render(<MessageBubble message={makeUserMessage('Hello')} />, {
+      wrapper: I18nTestWrapper,
+    });
 
     expect(container.firstElementChild).toHaveClass('items-end');
   });
 
   it('left-aligns agent messages', () => {
-    const { container } = render(<MessageBubble message={makeAgentMessage()} />);
+    const { container } = render(<MessageBubble message={makeAgentMessage()} />, {
+      wrapper: I18nTestWrapper,
+    });
 
     expect(container.firstElementChild).toHaveClass('items-start');
   });
 
   it('renders user message content text', () => {
-    render(<MessageBubble message={makeUserMessage('Hello world')} />);
+    render(<MessageBubble message={makeUserMessage('Hello world')} />, {
+      wrapper: I18nTestWrapper,
+    });
 
     expect(screen.getByText('Hello world')).toBeInTheDocument();
   });
 
   it('hides content div when content is empty', () => {
-    render(<MessageBubble message={makeAgentMessage({ content: '' })} />);
+    render(<MessageBubble message={makeAgentMessage({ content: '' })} />, {
+      wrapper: I18nTestWrapper,
+    });
 
     expect(screen.queryByText('Generating response...')).not.toBeInTheDocument();
   });
@@ -74,19 +83,23 @@ describe('MessageBubble', () => {
         timestamp: new Date(),
       },
     ];
-    render(<MessageBubble message={makeAgentMessage({ thoughts })} />);
+    render(<MessageBubble message={makeAgentMessage({ thoughts })} />, {
+      wrapper: I18nTestWrapper,
+    });
 
     expect(screen.getByTestId('inline-thoughts')).toBeInTheDocument();
   });
 
   it('renders InlineThoughts for agent messages even with empty thoughts', () => {
-    render(<MessageBubble message={makeAgentMessage({ thoughts: [] })} />);
+    render(<MessageBubble message={makeAgentMessage({ thoughts: [] })} />, {
+      wrapper: I18nTestWrapper,
+    });
 
     expect(screen.getByTestId('inline-thoughts')).toBeInTheDocument();
   });
 
   it('does not render InlineThoughts for user messages', () => {
-    render(<MessageBubble message={makeUserMessage('Hello')} />);
+    render(<MessageBubble message={makeUserMessage('Hello')} />, { wrapper: I18nTestWrapper });
 
     expect(screen.queryByTestId('inline-thoughts')).not.toBeInTheDocument();
   });
@@ -104,7 +117,8 @@ describe('MessageBubble', () => {
     render(
       <MessageBubble
         message={makeAgentMessage({ thoughts, activeThoughtId: 't1', status: 'streaming' })}
-      />
+      />,
+      { wrapper: I18nTestWrapper }
     );
 
     const inlineThoughts = screen.getByTestId('inline-thoughts');

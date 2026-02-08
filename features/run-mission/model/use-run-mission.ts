@@ -5,8 +5,10 @@ import { streamAgentMission } from '@/shared/api';
 import type { Message, AgentMessage } from '@/entities/message';
 import { createUserMessage, createAgentMessage } from '@/entities/message';
 import { createThought } from '@/entities/agent';
+import { useTranslation } from '@/shared/i18n';
 
 export function useRunMission() {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
   const currentAgentMessageId = useRef<string | null>(null);
@@ -72,15 +74,24 @@ export function useRunMission() {
           );
         },
         onComplete: () => {
+          const isEmpty = !accumulatedContent.trim();
           setMessages((prev) =>
             prev.map((msg) => {
               if (msg.id !== agentMessage.id || msg.role !== 'agent') return msg;
               const agentMsg = msg as AgentMessage;
-              // Mark all thoughts as complete
               const completedThoughts = agentMsg.thoughts.map((t) => ({
                 ...t,
                 status: 'complete' as const,
               }));
+              if (isEmpty) {
+                return {
+                  ...agentMsg,
+                  content: t('agent', 'emptyResponseError'),
+                  status: 'error' as const,
+                  thoughts: completedThoughts,
+                  activeThoughtId: undefined,
+                };
+              }
               return {
                 ...agentMsg,
                 status: 'complete' as const,
@@ -104,13 +115,17 @@ export function useRunMission() {
                 }));
                 return {
                   ...agentMsg,
-                  content: `Error: ${error.message}`,
+                  content: t('agent', 'genericError', { message: error.message }),
                   status: 'error' as const,
                   thoughts: completedThoughts,
                   activeThoughtId: undefined,
                 };
               }
-              return { ...msg, content: `Error: ${error.message}`, status: 'error' as const };
+              return {
+                ...msg,
+                content: t('agent', 'genericError', { message: error.message }),
+                status: 'error' as const,
+              };
             })
           );
           currentAgentMessageId.current = null;
@@ -118,7 +133,7 @@ export function useRunMission() {
         },
       });
     },
-    [isExecuting]
+    [isExecuting, t]
   );
 
   const clearConversation = useCallback(() => {

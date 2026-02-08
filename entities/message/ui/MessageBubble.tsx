@@ -3,6 +3,7 @@
 import { RiUser4Line, RiRobot2Line, RiCloseCircleLine } from '@remixicon/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/shared/lib';
+import { useTranslation } from '@/shared/i18n';
 import { InlineThoughts } from '@/entities/agent';
 import type { Message } from '../model/types';
 
@@ -11,6 +12,7 @@ interface MessageBubbleProps {
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
+  const { t } = useTranslation();
   const isUser = message.role === 'user';
   const isAgent = message.role === 'agent';
   const isError = isAgent && message.status === 'error';
@@ -29,7 +31,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           <RiRobot2Line className="h-3 w-3 text-muted-foreground" />
         )}
         <span className="text-[11px] font-medium text-muted-foreground">
-          {isUser ? 'You' : 'Agent'}
+          {isUser ? t('message', 'roleUser') : t('message', 'roleAgent')}
         </span>
       </div>
       <Card
@@ -50,7 +52,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             <div className="flex items-start gap-2">
               <RiCloseCircleLine className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
               <span className="text-sm text-destructive">
-                {message.content || 'An unexpected error occurred.'}
+                {message.content || t('message', 'defaultError')}
               </span>
             </div>
           )}

@@ -2,6 +2,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useRunMission } from './use-run-mission';
 import type { AgentMessage } from '@/entities/message';
 import * as api from '@/shared/api';
+import { I18nTestWrapper } from '@/shared/i18n';
 
 vi.mock('@/shared/api', () => ({
   streamAgentMission: vi.fn(),
@@ -13,7 +14,7 @@ describe('useRunMission', () => {
   });
 
   it('initializes with empty messages and not executing', () => {
-    const { result } = renderHook(() => useRunMission());
+    const { result } = renderHook(() => useRunMission(), { wrapper: I18nTestWrapper });
 
     expect(result.current.messages).toEqual([]);
     expect(result.current.isExecuting).toBe(false);
@@ -22,7 +23,7 @@ describe('useRunMission', () => {
   it('adds user message when running a mission', async () => {
     vi.mocked(api.streamAgentMission).mockImplementation(async () => {});
 
-    const { result } = renderHook(() => useRunMission());
+    const { result } = renderHook(() => useRunMission(), { wrapper: I18nTestWrapper });
 
     await act(async () => {
       result.current.runMission('Test prompt');
@@ -37,7 +38,7 @@ describe('useRunMission', () => {
   it('adds agent message placeholder when running a mission', async () => {
     vi.mocked(api.streamAgentMission).mockImplementation(async () => {});
 
-    const { result } = renderHook(() => useRunMission());
+    const { result } = renderHook(() => useRunMission(), { wrapper: I18nTestWrapper });
 
     await act(async () => {
       result.current.runMission('Test prompt');
@@ -51,7 +52,7 @@ describe('useRunMission', () => {
   });
 
   it('does not run mission with empty prompt', async () => {
-    const { result } = renderHook(() => useRunMission());
+    const { result } = renderHook(() => useRunMission(), { wrapper: I18nTestWrapper });
 
     await act(async () => {
       result.current.runMission('   ');
@@ -67,7 +68,7 @@ describe('useRunMission', () => {
       () => new Promise((resolve) => (resolveStream = resolve))
     );
 
-    const { result } = renderHook(() => useRunMission());
+    const { result } = renderHook(() => useRunMission(), { wrapper: I18nTestWrapper });
 
     await act(async () => {
       result.current.runMission('First prompt');
@@ -96,7 +97,7 @@ describe('useRunMission', () => {
       callbacks.onComplete();
     });
 
-    const { result } = renderHook(() => useRunMission());
+    const { result } = renderHook(() => useRunMission(), { wrapper: I18nTestWrapper });
 
     await act(async () => {
       result.current.runMission('Test');
@@ -112,7 +113,7 @@ describe('useRunMission', () => {
       callbacks.onComplete();
     });
 
-    const { result } = renderHook(() => useRunMission());
+    const { result } = renderHook(() => useRunMission(), { wrapper: I18nTestWrapper });
 
     await act(async () => {
       result.current.runMission('Test');
@@ -132,7 +133,7 @@ describe('useRunMission', () => {
       capturedCallbacks = callbacks;
     });
 
-    const { result } = renderHook(() => useRunMission());
+    const { result } = renderHook(() => useRunMission(), { wrapper: I18nTestWrapper });
 
     await act(async () => {
       result.current.runMission('Test');
@@ -159,7 +160,7 @@ describe('useRunMission', () => {
       capturedCallbacks = callbacks;
     });
 
-    const { result } = renderHook(() => useRunMission());
+    const { result } = renderHook(() => useRunMission(), { wrapper: I18nTestWrapper });
 
     await act(async () => {
       result.current.runMission('Test');
@@ -207,10 +208,11 @@ describe('useRunMission', () => {
 
   it('marks agent message as complete on completion', async () => {
     vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
+      callbacks.onToken('Done');
       callbacks.onComplete();
     });
 
-    const { result } = renderHook(() => useRunMission());
+    const { result } = renderHook(() => useRunMission(), { wrapper: I18nTestWrapper });
 
     await act(async () => {
       result.current.runMission('Test');
@@ -224,10 +226,11 @@ describe('useRunMission', () => {
 
   it('sets isExecuting to false on completion', async () => {
     vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
+      callbacks.onToken('Done');
       callbacks.onComplete();
     });
 
-    const { result } = renderHook(() => useRunMission());
+    const { result } = renderHook(() => useRunMission(), { wrapper: I18nTestWrapper });
 
     await act(async () => {
       result.current.runMission('Test');
@@ -242,7 +245,7 @@ describe('useRunMission', () => {
       callbacks.onError(new Error('Test error'));
     });
 
-    const { result } = renderHook(() => useRunMission());
+    const { result } = renderHook(() => useRunMission(), { wrapper: I18nTestWrapper });
 
     await act(async () => {
       result.current.runMission('Test');
@@ -264,7 +267,7 @@ describe('useRunMission', () => {
       callbacks.onComplete();
     });
 
-    const { result } = renderHook(() => useRunMission());
+    const { result } = renderHook(() => useRunMission(), { wrapper: I18nTestWrapper });
 
     await act(async () => {
       result.current.runMission('Test');
@@ -283,10 +286,11 @@ describe('useRunMission', () => {
     vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
       callbacks.onToolStart('fetch_page');
       callbacks.onToolStart('parse_html');
+      callbacks.onToken('Result');
       callbacks.onComplete();
     });
 
-    const { result } = renderHook(() => useRunMission());
+    const { result } = renderHook(() => useRunMission(), { wrapper: I18nTestWrapper });
 
     await act(async () => {
       result.current.runMission('Test');
@@ -305,7 +309,7 @@ describe('useRunMission', () => {
       capturedCallbacks = callbacks;
     });
 
-    const { result } = renderHook(() => useRunMission());
+    const { result } = renderHook(() => useRunMission(), { wrapper: I18nTestWrapper });
 
     await act(async () => {
       result.current.runMission('Test');
@@ -335,7 +339,7 @@ describe('useRunMission', () => {
       callbacks.onComplete();
     });
 
-    const { result } = renderHook(() => useRunMission());
+    const { result } = renderHook(() => useRunMission(), { wrapper: I18nTestWrapper });
 
     await act(async () => {
       result.current.runMission('First');
@@ -358,10 +362,11 @@ describe('useRunMission', () => {
 
   it('accumulates messages across multiple sequential missions', async () => {
     vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
+      callbacks.onToken('Reply');
       callbacks.onComplete();
     });
 
-    const { result } = renderHook(() => useRunMission());
+    const { result } = renderHook(() => useRunMission(), { wrapper: I18nTestWrapper });
 
     await act(async () => {
       result.current.runMission('First');
@@ -375,5 +380,22 @@ describe('useRunMission', () => {
     expect(result.current.messages).toHaveLength(4);
     expect(result.current.messages[0].content).toBe('First');
     expect(result.current.messages[2].content).toBe('Second');
+  });
+
+  it('treats empty response as error (e.g. rate limiting)', async () => {
+    vi.mocked(api.streamAgentMission).mockImplementation(async (_, callbacks) => {
+      callbacks.onComplete();
+    });
+
+    const { result } = renderHook(() => useRunMission(), { wrapper: I18nTestWrapper });
+
+    await act(async () => {
+      result.current.runMission('Test');
+    });
+
+    const agentMessage = result.current.messages.find((m) => m.role === 'agent') as AgentMessage;
+    expect(agentMessage.status).toBe('error');
+    expect(agentMessage.content).toMatch(/empty response/i);
+    expect(result.current.isExecuting).toBe(false);
   });
 });

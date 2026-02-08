@@ -1,3 +1,4 @@
+import type { ValidationTranslations } from '@/shared/i18n';
 import type { ScrapeAction, ScrapeJob } from './types';
 
 const URL_PATTERN = /^https?:\/\/.+/i;
@@ -23,12 +24,11 @@ export function isDuplicateJob(url: string, action: ScrapeAction, jobs: ScrapeJo
 export function validateUrlInput(
   url: string,
   existing: string[]
-): { valid: boolean; urlError?: string } {
+): { valid: boolean; urlError?: keyof ValidationTranslations } {
   const trimmed = url.trim();
   if (!trimmed) return { valid: false };
-  if (!isValidUrl(trimmed))
-    return { valid: false, urlError: 'URL must start with http:// or https://' };
-  if (isDuplicateUrl(trimmed, existing)) return { valid: false, urlError: 'URL already added' };
+  if (!isValidUrl(trimmed)) return { valid: false, urlError: 'urlInvalid' };
+  if (isDuplicateUrl(trimmed, existing)) return { valid: false, urlError: 'urlDuplicate' };
   return { valid: true };
 }
 
@@ -37,14 +37,17 @@ export function validateJobInput(
   action: ScrapeAction,
   instructions: string,
   jobs: ScrapeJob[]
-): { valid: boolean; urlError?: string; instructionsError?: string } {
+): {
+  valid: boolean;
+  urlError?: keyof ValidationTranslations;
+  instructionsError?: keyof ValidationTranslations;
+} {
   const trimmed = url.trim();
   if (!trimmed) return { valid: false };
-  if (!isValidUrl(trimmed))
-    return { valid: false, urlError: 'URL must start with http:// or https://' };
-  if (isDuplicateJob(trimmed, action, jobs)) return { valid: false, urlError: 'Job already added' };
+  if (!isValidUrl(trimmed)) return { valid: false, urlError: 'urlInvalid' };
+  if (isDuplicateJob(trimmed, action, jobs)) return { valid: false, urlError: 'jobDuplicate' };
   if (action === 'custom' && !instructions.trim())
-    return { valid: false, instructionsError: 'Instructions required for custom action' };
+    return { valid: false, instructionsError: 'instructionsRequired' };
   return { valid: true };
 }
 

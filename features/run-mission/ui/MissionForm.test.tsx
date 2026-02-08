@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MissionForm } from './MissionForm';
+import { I18nTestWrapper } from '@/shared/i18n';
 
 // Mock Radix Select to avoid portal/DOM complexity in jsdom
 vi.mock('@/components/ui/select', () => {
@@ -29,6 +30,13 @@ vi.mock('@/components/ui/select', () => {
   return { Select: SelectMock, SelectTrigger, SelectValue, SelectContent, SelectItem };
 });
 
+vi.mock('next/image', () => ({
+  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img {...props} />
+  ),
+}));
+
 vi.mock('@remixicon/react', () => ({
   RiCloseLine: (props: React.SVGProps<SVGSVGElement>) => (
     <span data-testid="icon-close" {...props} />
@@ -40,6 +48,9 @@ vi.mock('@remixicon/react', () => ({
   RiSettings3Line: (props: React.SVGProps<SVGSVGElement>) => (
     <span data-testid="icon-settings" {...props} />
   ),
+  RiSettings3Fill: (props: React.SVGProps<SVGSVGElement>) => (
+    <span data-testid="icon-settings-fill" {...props} />
+  ),
   RiLoader2Fill: (props: React.SVGProps<SVGSVGElement>) => (
     <span data-testid="icon-loader" role="status" aria-label="Loading" {...props} />
   ),
@@ -50,6 +61,10 @@ const defaultProps = {
   messageCount: 0,
   onClear: vi.fn(),
 };
+
+function renderForm(props = {}) {
+  return render(<MissionForm {...defaultProps} {...props} />, { wrapper: I18nTestWrapper });
+}
 
 function addJob(url: string) {
   const input = screen.getByLabelText('URL input');
@@ -64,7 +79,7 @@ function openInstructions() {
 describe('MissionForm', () => {
   describe('rendering', () => {
     it('renders URL input, Add Job button, action select, Run button, and settings toggle', () => {
-      render(<MissionForm {...defaultProps} />);
+      renderForm();
 
       expect(screen.getByLabelText('URL input')).toBeInTheDocument();
       expect(screen.getByLabelText('Add Job')).toBeInTheDocument();
@@ -74,13 +89,27 @@ describe('MissionForm', () => {
     });
 
     it('does not render Chat header', () => {
-      render(<MissionForm {...defaultProps} />);
+      renderForm();
 
       expect(screen.queryByText('Chat')).not.toBeInTheDocument();
     });
 
+    it('shows welcome message when messageCount is 0', () => {
+      renderForm({ messageCount: 0 });
+
+      expect(screen.getByText('Welcome to Agentic')).toBeInTheDocument();
+      expect(screen.getByAltText('Agentic')).toBeInTheDocument();
+    });
+
+    it('collapses welcome message when messageCount > 0', () => {
+      renderForm({ messageCount: 1 });
+
+      const welcome = screen.getByText('Welcome to Agentic');
+      expect(welcome.closest('[class*="grid-rows-"]')).toHaveClass('grid-rows-[0fr]');
+    });
+
     it('instructions textarea is hidden by default', () => {
-      render(<MissionForm {...defaultProps} />);
+      renderForm();
 
       // Textarea is in the DOM but inside collapsed container
       const textarea = screen.getByLabelText('Additional instructions');
@@ -89,7 +118,7 @@ describe('MissionForm', () => {
     });
 
     it('shows textarea when settings toggle is clicked', () => {
-      render(<MissionForm {...defaultProps} />);
+      renderForm();
 
       openInstructions();
 
@@ -100,20 +129,20 @@ describe('MissionForm', () => {
 
   describe('header', () => {
     it('shows Clear button only when messageCount > 0', () => {
-      render(<MissionForm {...defaultProps} messageCount={5} />);
+      renderForm({ messageCount: 5 });
 
       expect(screen.getByLabelText('Clear chat')).toBeInTheDocument();
     });
 
     it('hides Clear button when messageCount is 0', () => {
-      render(<MissionForm {...defaultProps} messageCount={0} />);
+      renderForm({ messageCount: 0 });
 
       expect(screen.queryByLabelText('Clear chat')).not.toBeInTheDocument();
     });
 
     it('calls onClear when Clear button is clicked', () => {
       const onClear = vi.fn();
-      render(<MissionForm {...defaultProps} messageCount={3} onClear={onClear} />);
+      renderForm({ messageCount: 3, onClear });
 
       fireEvent.click(screen.getByLabelText('Clear chat'));
 
@@ -121,7 +150,7 @@ describe('MissionForm', () => {
     });
 
     it('disables Clear during processing', () => {
-      render(<MissionForm {...defaultProps} messageCount={3} isLoading={true} />);
+      renderForm({ messageCount: 3, isLoading: true });
 
       expect(screen.getByLabelText('Clear chat')).toBeDisabled();
     });
@@ -129,7 +158,7 @@ describe('MissionForm', () => {
 
   describe('job management', () => {
     it('adds a job and shows mini-card with hostname and action', () => {
-      render(<MissionForm {...defaultProps} />);
+      renderForm();
 
       addJob('https://example.com/page');
 
@@ -138,7 +167,7 @@ describe('MissionForm', () => {
     });
 
     it('shows error for invalid URL', () => {
-      render(<MissionForm {...defaultProps} />);
+      renderForm();
 
       addJob('not-a-url');
 
@@ -146,7 +175,7 @@ describe('MissionForm', () => {
     });
 
     it('shows error for duplicate job (same URL + action)', () => {
-      render(<MissionForm {...defaultProps} />);
+      renderForm();
 
       addJob('https://example.com');
       addJob('https://example.com');
@@ -155,7 +184,7 @@ describe('MissionForm', () => {
     });
 
     it('clears URL error when user types', () => {
-      render(<MissionForm {...defaultProps} />);
+      renderForm();
 
       addJob('not-a-url');
       expect(screen.getByText('URL must start with http:// or https://')).toBeInTheDocument();
@@ -165,7 +194,7 @@ describe('MissionForm', () => {
     });
 
     it('removes job when mini-card close button is clicked', () => {
-      render(<MissionForm {...defaultProps} />);
+      renderForm();
 
       addJob('https://example.com');
       expect(screen.getByText(/example\.com/)).toBeInTheDocument();
@@ -175,7 +204,7 @@ describe('MissionForm', () => {
     });
 
     it('adds job on Enter key in URL input', () => {
-      render(<MissionForm {...defaultProps} />);
+      renderForm();
 
       const input = screen.getByLabelText('URL input');
       fireEvent.change(input, { target: { value: 'https://example.com' } });
@@ -185,7 +214,7 @@ describe('MissionForm', () => {
     });
 
     it('clears instructions after adding a job', () => {
-      render(<MissionForm {...defaultProps} />);
+      renderForm();
 
       openInstructions();
       fireEvent.change(screen.getByLabelText('Additional instructions'), {
@@ -202,7 +231,7 @@ describe('MissionForm', () => {
   describe('submission', () => {
     it('submits single job prompt on Run click', () => {
       const onSubmit = vi.fn();
-      render(<MissionForm {...defaultProps} onSubmit={onSubmit} />);
+      renderForm({ onSubmit });
 
       addJob('https://example.com');
       fireEvent.click(screen.getByLabelText('Run'));
@@ -212,7 +241,7 @@ describe('MissionForm', () => {
     });
 
     it('shows "Run N jobs" in sr-only text when jobs exist', () => {
-      render(<MissionForm {...defaultProps} />);
+      renderForm();
 
       addJob('https://first.com');
       addJob('https://second.com');
@@ -221,7 +250,7 @@ describe('MissionForm', () => {
     });
 
     it('shows "Run 1 job" for single job', () => {
-      render(<MissionForm {...defaultProps} />);
+      renderForm();
 
       addJob('https://example.com');
 
@@ -229,13 +258,13 @@ describe('MissionForm', () => {
     });
 
     it('shows "Run" when no jobs', () => {
-      render(<MissionForm {...defaultProps} />);
+      renderForm();
 
       expect(screen.getByLabelText('Run')).toHaveTextContent('Run');
     });
 
     it('resets form fields after submission', () => {
-      render(<MissionForm {...defaultProps} />);
+      renderForm();
 
       addJob('https://example.com');
       fireEvent.click(screen.getByLabelText('Run'));
@@ -244,13 +273,13 @@ describe('MissionForm', () => {
     });
 
     it('disables Run when no jobs are added', () => {
-      render(<MissionForm {...defaultProps} />);
+      renderForm();
 
       expect(screen.getByLabelText('Run')).toBeDisabled();
     });
 
     it('disables all inputs when isLoading is true', () => {
-      render(<MissionForm {...defaultProps} isLoading={true} />);
+      renderForm({ isLoading: true });
 
       openInstructions();
 
@@ -261,7 +290,7 @@ describe('MissionForm', () => {
     });
 
     it('shows spinner on Run button when loading', () => {
-      render(<MissionForm {...defaultProps} isLoading={true} />);
+      renderForm({ isLoading: true });
 
       const runButton = screen.getByLabelText('Run');
       expect(runButton.querySelector('[role="status"]')).toBeInTheDocument();
@@ -271,7 +300,7 @@ describe('MissionForm', () => {
   describe('queue behavior', () => {
     it('sends first prompt immediately and queues the rest', () => {
       const onSubmit = vi.fn();
-      render(<MissionForm {...defaultProps} onSubmit={onSubmit} />);
+      renderForm({ onSubmit });
 
       addJob('https://first.com');
       addJob('https://second.com');
@@ -284,7 +313,7 @@ describe('MissionForm', () => {
 
     it('shows queue progress during processing', () => {
       const onSubmit = vi.fn();
-      render(<MissionForm {...defaultProps} onSubmit={onSubmit} isLoading={false} />);
+      renderForm({ onSubmit, isLoading: false });
 
       addJob('https://first.com');
       addJob('https://second.com');
@@ -297,7 +326,9 @@ describe('MissionForm', () => {
     it('auto-fires next prompt when isLoading goes true→false', () => {
       const onSubmit = vi.fn();
       const { rerender } = render(
-        <MissionForm {...defaultProps} onSubmit={onSubmit} isLoading={false} />
+        <I18nTestWrapper>
+          <MissionForm {...defaultProps} onSubmit={onSubmit} isLoading={false} />
+        </I18nTestWrapper>
       );
 
       addJob('https://first.com');
@@ -307,9 +338,17 @@ describe('MissionForm', () => {
       expect(onSubmit).toHaveBeenCalledTimes(1);
 
       // Simulate loading starts
-      rerender(<MissionForm {...defaultProps} onSubmit={onSubmit} isLoading={true} />);
+      rerender(
+        <I18nTestWrapper>
+          <MissionForm {...defaultProps} onSubmit={onSubmit} isLoading={true} />
+        </I18nTestWrapper>
+      );
       // Simulate loading completes
-      rerender(<MissionForm {...defaultProps} onSubmit={onSubmit} isLoading={false} />);
+      rerender(
+        <I18nTestWrapper>
+          <MissionForm {...defaultProps} onSubmit={onSubmit} isLoading={false} />
+        </I18nTestWrapper>
+      );
 
       expect(onSubmit).toHaveBeenCalledTimes(2);
       expect(onSubmit).toHaveBeenLastCalledWith(expect.stringContaining('https://second.com'));
@@ -317,7 +356,7 @@ describe('MissionForm', () => {
 
     it('cancels remaining queue on Cancel click', () => {
       const onSubmit = vi.fn();
-      render(<MissionForm {...defaultProps} onSubmit={onSubmit} isLoading={false} />);
+      renderForm({ onSubmit, isLoading: false });
 
       addJob('https://first.com');
       addJob('https://second.com');
@@ -333,7 +372,9 @@ describe('MissionForm', () => {
     it('does not auto-fire after cancel even when isLoading toggles', () => {
       const onSubmit = vi.fn();
       const { rerender } = render(
-        <MissionForm {...defaultProps} onSubmit={onSubmit} isLoading={false} />
+        <I18nTestWrapper>
+          <MissionForm {...defaultProps} onSubmit={onSubmit} isLoading={false} />
+        </I18nTestWrapper>
       );
 
       addJob('https://first.com');
@@ -344,8 +385,16 @@ describe('MissionForm', () => {
       fireEvent.click(screen.getByLabelText('Cancel queue'));
 
       // Simulate loading cycle
-      rerender(<MissionForm {...defaultProps} onSubmit={onSubmit} isLoading={true} />);
-      rerender(<MissionForm {...defaultProps} onSubmit={onSubmit} isLoading={false} />);
+      rerender(
+        <I18nTestWrapper>
+          <MissionForm {...defaultProps} onSubmit={onSubmit} isLoading={true} />
+        </I18nTestWrapper>
+      );
+      rerender(
+        <I18nTestWrapper>
+          <MissionForm {...defaultProps} onSubmit={onSubmit} isLoading={false} />
+        </I18nTestWrapper>
+      );
 
       // Only the first submit should have happened
       expect(onSubmit).toHaveBeenCalledTimes(1);
@@ -355,7 +404,7 @@ describe('MissionForm', () => {
   describe('Enter key in URL input', () => {
     it('submits form on Enter with empty input but existing jobs', () => {
       const onSubmit = vi.fn();
-      render(<MissionForm {...defaultProps} onSubmit={onSubmit} />);
+      renderForm({ onSubmit });
 
       addJob('https://example.com');
 
@@ -367,7 +416,7 @@ describe('MissionForm', () => {
 
     it('does not submit form on Enter with text in input', () => {
       const onSubmit = vi.fn();
-      render(<MissionForm {...defaultProps} onSubmit={onSubmit} />);
+      renderForm({ onSubmit });
 
       addJob('https://example.com');
 

@@ -5,6 +5,7 @@ import { RiArrowRightSLine, RiArrowDownSLine } from '@remixicon/react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
+import { useTranslation } from '@/shared/i18n';
 import type { AgentThought } from '../model/types';
 import { ThoughtItem } from './ThoughtItem';
 
@@ -15,6 +16,7 @@ interface InlineThoughtsProps {
 }
 
 export function InlineThoughts({ thoughts, isComplete, activeThoughtId }: InlineThoughtsProps) {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (!isComplete) {
@@ -36,7 +38,7 @@ export function InlineThoughts({ thoughts, isComplete, activeThoughtId }: Inline
         {isWaiting && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground animate-in fade-in duration-300">
             <Spinner className="h-3 w-3" />
-            <span>{displayThought ? 'Still working...' : 'Thinking...'}</span>
+            <span>{displayThought ? t('agent', 'stillWorking') : t('agent', 'thinking')}</span>
           </div>
         )}
       </div>
@@ -47,7 +49,7 @@ export function InlineThoughts({ thoughts, isComplete, activeThoughtId }: Inline
     return null;
   }
 
-  const headerText = `Completed in ${thoughts.length} step${thoughts.length !== 1 ? 's' : ''}`;
+  const headerText = t('agent', 'completedSteps', { count: thoughts.length });
 
   return (
     <div>

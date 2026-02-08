@@ -4,10 +4,12 @@ import { useTheme } from 'next-themes';
 import { useSyncExternalStore } from 'react';
 import { RiSunLine, RiMoonLine } from '@remixicon/react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/shared/i18n';
 
 const emptySubscribe = () => () => {};
 
 export function ThemeToggle() {
+  const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
   const mounted = useSyncExternalStore(
     emptySubscribe,
@@ -24,7 +26,7 @@ export function ThemeToggle() {
       variant="ghost"
       size="icon"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      aria-label="Toggle dark mode"
+      aria-label={t('common', 'toggleDarkMode')}
       className="relative h-8 w-8"
     >
       <RiSunLine

@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { InlineThoughts } from './InlineThoughts';
+import { I18nTestWrapper } from '@/shared/i18n';
 import type { AgentThought } from '../model/types';
 
 vi.mock('./ThoughtItem', () => ({
@@ -33,42 +34,52 @@ const makeThought = (id: string, content: string): AgentThought => ({
 
 describe('InlineThoughts', () => {
   it('shows thinking fallback for empty thoughts during streaming', () => {
-    render(<InlineThoughts thoughts={[]} isComplete={false} />);
+    render(<InlineThoughts thoughts={[]} isComplete={false} />, { wrapper: I18nTestWrapper });
 
     expect(screen.getByText('Thinking...')).toBeInTheDocument();
     expect(screen.getByTestId('icon-spinner')).toBeInTheDocument();
   });
 
   it('returns null for empty thoughts when complete', () => {
-    const { container } = render(<InlineThoughts thoughts={[]} isComplete={true} />);
+    const { container } = render(<InlineThoughts thoughts={[]} isComplete={true} />, {
+      wrapper: I18nTestWrapper,
+    });
 
     expect(container.innerHTML).toBe('');
   });
 
   it('shows "Completed in X steps" when isComplete is true', () => {
     const thoughts = [makeThought('1', 'First'), makeThought('2', 'Second')];
-    render(<InlineThoughts thoughts={thoughts} isComplete={true} />);
+    render(<InlineThoughts thoughts={thoughts} isComplete={true} />, {
+      wrapper: I18nTestWrapper,
+    });
 
     expect(screen.getByText('Completed in 2 steps')).toBeInTheDocument();
   });
 
   it('uses singular "step" for 1 thought', () => {
     const thoughts = [makeThought('1', 'Only one')];
-    render(<InlineThoughts thoughts={thoughts} isComplete={true} />);
+    render(<InlineThoughts thoughts={thoughts} isComplete={true} />, {
+      wrapper: I18nTestWrapper,
+    });
 
     expect(screen.getByText('Completed in 1 step')).toBeInTheDocument();
   });
 
   it('starts collapsed when complete', () => {
     const thoughts = [makeThought('1', 'First')];
-    render(<InlineThoughts thoughts={thoughts} isComplete={true} />);
+    render(<InlineThoughts thoughts={thoughts} isComplete={true} />, {
+      wrapper: I18nTestWrapper,
+    });
 
     expect(screen.queryByTestId('thought-1')).not.toBeInTheDocument();
   });
 
   it('toggles expand/collapse on button click', () => {
     const thoughts = [makeThought('1', 'First')];
-    render(<InlineThoughts thoughts={thoughts} isComplete={true} />);
+    render(<InlineThoughts thoughts={thoughts} isComplete={true} />, {
+      wrapper: I18nTestWrapper,
+    });
 
     // Initially collapsed
     expect(screen.queryByTestId('thought-1')).not.toBeInTheDocument();
@@ -84,7 +95,9 @@ describe('InlineThoughts', () => {
 
   it('renders only active thought during streaming', () => {
     const thoughts = [makeThought('1', 'First'), makeThought('2', 'Second')];
-    render(<InlineThoughts thoughts={thoughts} isComplete={false} activeThoughtId="2" />);
+    render(<InlineThoughts thoughts={thoughts} isComplete={false} activeThoughtId="2" />, {
+      wrapper: I18nTestWrapper,
+    });
 
     expect(screen.queryByTestId('thought-1')).not.toBeInTheDocument();
     expect(screen.getByTestId('thought-2')).toBeInTheDocument();
@@ -92,14 +105,19 @@ describe('InlineThoughts', () => {
 
   it('falls back to latest thought during streaming when no activeThoughtId matches', () => {
     const thoughts = [makeThought('1', 'First')];
-    render(<InlineThoughts thoughts={thoughts} isComplete={false} activeThoughtId="nonexistent" />);
+    render(
+      <InlineThoughts thoughts={thoughts} isComplete={false} activeThoughtId="nonexistent" />,
+      { wrapper: I18nTestWrapper }
+    );
 
     expect(screen.getByTestId('thought-1')).toBeInTheDocument();
   });
 
   it('falls back to latest thought during streaming when activeThoughtId is undefined', () => {
     const thoughts = [makeThought('1', 'First')];
-    render(<InlineThoughts thoughts={thoughts} isComplete={false} />);
+    render(<InlineThoughts thoughts={thoughts} isComplete={false} />, {
+      wrapper: I18nTestWrapper,
+    });
 
     expect(screen.getByTestId('thought-1')).toBeInTheDocument();
   });

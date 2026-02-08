@@ -90,14 +90,14 @@ describe('validateUrlInput', () => {
   it('returns invalid with error for bad URL', () => {
     expect(validateUrlInput('example.com', [])).toEqual({
       valid: false,
-      urlError: 'URL must start with http:// or https://',
+      urlError: 'urlInvalid',
     });
   });
 
   it('returns invalid with error for duplicate URL', () => {
     expect(validateUrlInput('https://example.com', ['https://example.com'])).toEqual({
       valid: false,
-      urlError: 'URL already added',
+      urlError: 'urlDuplicate',
     });
   });
 
@@ -120,7 +120,7 @@ describe('validateJobInput', () => {
   it('returns invalid with error for bad URL', () => {
     expect(validateJobInput('example.com', 'extract-text', '', [])).toEqual({
       valid: false,
-      urlError: 'URL must start with http:// or https://',
+      urlError: 'urlInvalid',
     });
   });
 
@@ -130,7 +130,7 @@ describe('validateJobInput', () => {
     ];
     expect(validateJobInput('https://example.com', 'extract-text', '', jobs)).toEqual({
       valid: false,
-      urlError: 'Job already added',
+      urlError: 'jobDuplicate',
     });
   });
 
@@ -144,7 +144,7 @@ describe('validateJobInput', () => {
   it('returns invalid with instructionsError for custom action without instructions', () => {
     expect(validateJobInput('https://example.com', 'custom', '', [])).toEqual({
       valid: false,
-      instructionsError: 'Instructions required for custom action',
+      instructionsError: 'instructionsRequired',
     });
   });
 

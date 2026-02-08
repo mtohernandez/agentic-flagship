@@ -1,0 +1,61 @@
+import type { TranslationNamespaces } from '../types';
+
+export const en: TranslationNamespaces = {
+  common: {
+    toggleDarkMode: 'Toggle dark mode',
+    switchLanguage: 'Switch language',
+  },
+  mission: {
+    extractTextLabel: 'Extract text content',
+    extractTextHint: 'e.g., "Only the main article body"',
+    extractProductsLabel: 'Extract product data',
+    extractProductsHint: 'e.g., "Include prices and availability"',
+    extractContactsLabel: 'Extract contact info',
+    extractContactsHint: 'e.g., "Find emails and phone numbers"',
+    extractLinksLabel: 'Extract links',
+    extractLinksHint: 'e.g., "Only external links"',
+    summarizeLabel: 'Summarize page',
+    summarizeHint: 'e.g., "Focus on key facts"',
+    customLabel: 'Custom instructions',
+    customHint: 'Describe what you want the agent to do...',
+    scrapeAction: 'Scrape action',
+    urlInput: 'URL input',
+    toggleInstructions: 'Toggle instructions',
+    addJob: 'Add Job',
+    run: 'Run',
+    runCountLabel: 'Run {count} jobs',
+    runCountLabel_one: 'Run {count} job',
+    runCountLabel_other: 'Run {count} jobs',
+    clearChat: 'Clear chat',
+    removeJob: 'Remove {hostname} {action}',
+    additionalInstructions: 'Additional instructions',
+    cancel: 'Cancel',
+    cancelQueue: 'Cancel queue',
+    queueProgress: 'Processing {current} of {total} jobs...',
+  },
+  validation: {
+    urlInvalid: 'URL must start with http:// or https://',
+    urlDuplicate: 'URL already added',
+    jobDuplicate: 'Job already added',
+    instructionsRequired: 'Instructions required for custom action',
+  },
+  message: {
+    roleUser: 'You',
+    roleAgent: 'Agent',
+    defaultError: 'An unexpected error occurred.',
+    welcomeTitle: 'Welcome to Agentic',
+    welcomeDescription:
+      'Your AI-powered web scraping assistant. Paste a URL, pick an action, and let the agent do the work.',
+  },
+  agent: {
+    thinking: 'Thinking...',
+    stillWorking: 'Still working...',
+    completedSteps: 'Completed in {count} steps',
+    completedSteps_one: 'Completed in {count} step',
+    completedSteps_other: 'Completed in {count} steps',
+    agentThinking: 'Agent is thinking...',
+    emptyResponseError:
+      'Error: The agent returned an empty response. This may be caused by rate limiting — please try again shortly.',
+    genericError: 'Error: {message}',
+  },
+};
