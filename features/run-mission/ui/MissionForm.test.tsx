@@ -34,6 +34,12 @@ vi.mock('@remixicon/react', () => ({
     <span data-testid="icon-close" {...props} />
   ),
   RiAddLine: (props: React.SVGProps<SVGSVGElement>) => <span data-testid="icon-add" {...props} />,
+  RiArrowUpLine: (props: React.SVGProps<SVGSVGElement>) => (
+    <span data-testid="icon-arrow-up" {...props} />
+  ),
+  RiSettings3Line: (props: React.SVGProps<SVGSVGElement>) => (
+    <span data-testid="icon-settings" {...props} />
+  ),
   RiLoader2Fill: (props: React.SVGProps<SVGSVGElement>) => (
     <span data-testid="icon-loader" role="status" aria-label="Loading" {...props} />
   ),
@@ -51,36 +57,58 @@ function addJob(url: string) {
   fireEvent.click(screen.getByLabelText('Add Job'));
 }
 
+function openInstructions() {
+  fireEvent.click(screen.getByLabelText('Toggle instructions'));
+}
+
 describe('MissionForm', () => {
   describe('rendering', () => {
-    it('renders URL input, Add Job button, action select, Run button, and textarea', () => {
+    it('renders URL input, Add Job button, action select, Run button, and settings toggle', () => {
       render(<MissionForm {...defaultProps} />);
 
       expect(screen.getByLabelText('URL input')).toBeInTheDocument();
       expect(screen.getByLabelText('Add Job')).toBeInTheDocument();
       expect(screen.getByTestId('select-trigger')).toBeInTheDocument();
       expect(screen.getByLabelText('Run')).toBeInTheDocument();
-      expect(screen.getByLabelText('Additional instructions')).toBeInTheDocument();
+      expect(screen.getByLabelText('Toggle instructions')).toBeInTheDocument();
     });
 
-    it('renders header with Chat title', () => {
+    it('does not render Chat header', () => {
       render(<MissionForm {...defaultProps} />);
 
-      expect(screen.getByText('Chat')).toBeInTheDocument();
+      expect(screen.queryByText('Chat')).not.toBeInTheDocument();
+    });
+
+    it('instructions textarea is hidden by default', () => {
+      render(<MissionForm {...defaultProps} />);
+
+      // Textarea is in the DOM but inside collapsed container
+      const textarea = screen.getByLabelText('Additional instructions');
+      expect(textarea).toBeInTheDocument();
+      expect(textarea.closest('[class*="grid-rows-"]')).toHaveClass('grid-rows-[0fr]');
+    });
+
+    it('shows textarea when settings toggle is clicked', () => {
+      render(<MissionForm {...defaultProps} />);
+
+      openInstructions();
+
+      const textarea = screen.getByLabelText('Additional instructions');
+      expect(textarea.closest('[class*="grid-rows-"]')).toHaveClass('grid-rows-[1fr]');
     });
   });
 
   describe('header', () => {
-    it('shows message count badge when messageCount > 0', () => {
+    it('shows Clear button only when messageCount > 0', () => {
       render(<MissionForm {...defaultProps} messageCount={5} />);
 
-      expect(screen.getByText('5')).toBeInTheDocument();
+      expect(screen.getByLabelText('Clear chat')).toBeInTheDocument();
     });
 
-    it('hides badge when messageCount is 0', () => {
+    it('hides Clear button when messageCount is 0', () => {
       render(<MissionForm {...defaultProps} messageCount={0} />);
 
-      expect(screen.queryByText('0')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Clear chat')).not.toBeInTheDocument();
     });
 
     it('calls onClear when Clear button is clicked', () => {
@@ -92,12 +120,6 @@ describe('MissionForm', () => {
       expect(onClear).toHaveBeenCalledTimes(1);
     });
 
-    it('disables Clear when messageCount is 0', () => {
-      render(<MissionForm {...defaultProps} messageCount={0} />);
-
-      expect(screen.getByLabelText('Clear chat')).toBeDisabled();
-    });
-
     it('disables Clear during processing', () => {
       render(<MissionForm {...defaultProps} messageCount={3} isLoading={true} />);
 
@@ -106,7 +128,7 @@ describe('MissionForm', () => {
   });
 
   describe('job management', () => {
-    it('adds a job and shows badge with hostname and action', () => {
+    it('adds a job and shows mini-card with hostname and action', () => {
       render(<MissionForm {...defaultProps} />);
 
       addJob('https://example.com/page');
@@ -142,7 +164,7 @@ describe('MissionForm', () => {
       expect(screen.queryByText('URL must start with http:// or https://')).not.toBeInTheDocument();
     });
 
-    it('removes job when badge close button is clicked', () => {
+    it('removes job when mini-card close button is clicked', () => {
       render(<MissionForm {...defaultProps} />);
 
       addJob('https://example.com');
@@ -165,6 +187,7 @@ describe('MissionForm', () => {
     it('clears instructions after adding a job', () => {
       render(<MissionForm {...defaultProps} />);
 
+      openInstructions();
       fireEvent.change(screen.getByLabelText('Additional instructions'), {
         target: { value: 'some text' },
       });
@@ -188,7 +211,7 @@ describe('MissionForm', () => {
       expect(onSubmit).toHaveBeenCalledWith(expect.stringContaining('https://example.com'));
     });
 
-    it('shows "Run N jobs" on button when jobs exist', () => {
+    it('shows "Run N jobs" in sr-only text when jobs exist', () => {
       render(<MissionForm {...defaultProps} />);
 
       addJob('https://first.com');
@@ -228,6 +251,8 @@ describe('MissionForm', () => {
 
     it('disables all inputs when isLoading is true', () => {
       render(<MissionForm {...defaultProps} isLoading={true} />);
+
+      openInstructions();
 
       expect(screen.getByLabelText('URL input')).toBeDisabled();
       expect(screen.getByLabelText('Add Job')).toBeDisabled();

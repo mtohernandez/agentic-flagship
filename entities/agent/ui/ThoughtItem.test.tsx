@@ -6,7 +6,10 @@ vi.mock('@remixicon/react', () => ({
   RiCheckLine: (props: React.SVGProps<SVGSVGElement>) => (
     <span data-testid="icon-check" className={props.className as string} />
   ),
-  RiLoader4Line: (props: React.SVGProps<SVGSVGElement>) => (
+}));
+
+vi.mock('@/components/ui/spinner', () => ({
+  Spinner: (props: React.SVGProps<SVGSVGElement>) => (
     <span data-testid="icon-loader" className={props.className as string} />
   ),
 }));
@@ -35,12 +38,12 @@ describe('ThoughtItem', () => {
     expect(icon.className).toContain('text-green-500');
   });
 
-  it('shows spinning loader when status is executing', () => {
+  it('shows spinner when status is executing', () => {
     render(<ThoughtItem thought={makeThought({ status: 'executing' })} />);
 
     const icon = screen.getByTestId('icon-loader');
     expect(icon).toBeInTheDocument();
-    expect(icon.className).toContain('animate-spin');
+    expect(icon.className).toContain('text-primary');
   });
 
   it('shows no icon when status is pending', () => {
@@ -48,29 +51,5 @@ describe('ThoughtItem', () => {
 
     expect(screen.queryByTestId('icon-check')).not.toBeInTheDocument();
     expect(screen.queryByTestId('icon-loader')).not.toBeInTheDocument();
-  });
-
-  it('renders "Thought" badge for thought type', () => {
-    render(<ThoughtItem thought={makeThought({ type: 'thought' })} />);
-
-    expect(screen.getByText('Thought')).toBeInTheDocument();
-  });
-
-  it('renders "Action" badge for action type', () => {
-    render(<ThoughtItem thought={makeThought({ type: 'action' })} />);
-
-    expect(screen.getByText('Action')).toBeInTheDocument();
-  });
-
-  it('renders "Result" badge for result type', () => {
-    render(<ThoughtItem thought={makeThought({ type: 'result' })} />);
-
-    expect(screen.getByText('Result')).toBeInTheDocument();
-  });
-
-  it('falls back to "Thought" style for unknown type', () => {
-    render(<ThoughtItem thought={makeThought({ type: 'unknown' as AgentThought['type'] })} />);
-
-    expect(screen.getByText('Thought')).toBeInTheDocument();
   });
 });

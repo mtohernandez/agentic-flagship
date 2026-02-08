@@ -4,32 +4,57 @@ import { useState } from 'react';
 import { RiArrowRightSLine, RiArrowDownSLine } from '@remixicon/react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
 import type { AgentThought } from '../model/types';
 import { ThoughtItem } from './ThoughtItem';
 
 interface InlineThoughtsProps {
   thoughts: AgentThought[];
   isComplete: boolean;
+  activeThoughtId?: string;
 }
 
-export function InlineThoughts({ thoughts, isComplete }: InlineThoughtsProps) {
-  // Start collapsed if already complete, otherwise start expanded
-  const [isExpanded, setIsExpanded] = useState(() => !isComplete);
+export function InlineThoughts({ thoughts, isComplete, activeThoughtId }: InlineThoughtsProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  if (!isComplete) {
+    const activeThought = thoughts.find((t) => t.id === activeThoughtId);
+    const displayThought = activeThought ?? thoughts[thoughts.length - 1];
+
+    const isWaiting = !displayThought || displayThought.status === 'complete';
+
+    return (
+      <div className="space-y-1.5 transition-all duration-300 ease-in-out">
+        {displayThought && (
+          <div
+            key={displayThought.id}
+            className="animate-in fade-in slide-in-from-bottom-1 duration-300"
+          >
+            <ThoughtItem thought={displayThought} />
+          </div>
+        )}
+        {isWaiting && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground animate-in fade-in duration-300">
+            <Spinner className="h-3 w-3" />
+            <span>{displayThought ? 'Still working...' : 'Thinking...'}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (thoughts.length === 0) {
     return null;
   }
 
-  const headerText = isComplete
-    ? `Completed in ${thoughts.length} step${thoughts.length !== 1 ? 's' : ''}`
-    : `Thinking (${thoughts.length} step${thoughts.length !== 1 ? 's' : ''})`;
+  const headerText = `Completed in ${thoughts.length} step${thoughts.length !== 1 ? 's' : ''}`;
 
   return (
-    <div className="mt-2 border rounded-md bg-background/50">
+    <div>
       <Button
         variant="ghost"
         size="sm"
-        className="w-full justify-start gap-1 h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+        className="w-full justify-start gap-1 h-7 px-0 text-xs text-muted-foreground hover:text-foreground"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         {isExpanded ? (
@@ -41,9 +66,9 @@ export function InlineThoughts({ thoughts, isComplete }: InlineThoughtsProps) {
       </Button>
 
       {isExpanded && (
-        <div className="px-3 pb-3">
-          <Separator className="mb-3" />
-          <div className="space-y-2">
+        <div className="pt-2">
+          <Separator className="mb-2" />
+          <div className="space-y-1.5">
             {thoughts.map((thought) => (
               <ThoughtItem key={thought.id} thought={thought} />
             ))}

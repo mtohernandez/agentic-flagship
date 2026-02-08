@@ -6,19 +6,11 @@ vi.mock('@/entities/message', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/entities/message')>();
   return {
     ...actual,
-    MessageList: ({ messages, children }: { messages: Message[]; children?: React.ReactNode }) => (
-      <div data-testid="message-list" data-count={messages.length}>
-        {children}
-      </div>
+    MessageList: ({ messages }: { messages: Message[] }) => (
+      <div data-testid="message-list" data-count={messages.length} />
     ),
   };
 });
-
-vi.mock('@/entities/agent', () => ({
-  ThinkingIndicator: ({ isThinking }: { isThinking: boolean }) => (
-    <div data-testid="thinking-indicator" data-thinking={isThinking} />
-  ),
-}));
 
 vi.mock('@/features/run-mission', () => ({
   MissionForm: ({
@@ -54,7 +46,6 @@ describe('ChatPanel', () => {
     render(<ChatPanel {...defaultProps} />);
 
     expect(screen.getByTestId('message-list')).toBeInTheDocument();
-    expect(screen.getByTestId('thinking-indicator')).toBeInTheDocument();
     expect(screen.getByTestId('mission-form')).toBeInTheDocument();
   });
 
@@ -65,7 +56,6 @@ describe('ChatPanel', () => {
     );
 
     expect(screen.getByTestId('message-list')).toHaveAttribute('data-count', '1');
-    expect(screen.getByTestId('thinking-indicator')).toHaveAttribute('data-thinking', 'true');
     expect(screen.getByTestId('mission-form')).toHaveAttribute('data-loading', 'true');
     expect(screen.getByTestId('mission-form')).toHaveAttribute('data-message-count', '1');
   });

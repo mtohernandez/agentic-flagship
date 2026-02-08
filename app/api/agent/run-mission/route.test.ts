@@ -6,8 +6,6 @@ vi.mock('@/shared/api/server-config', () => ({
   getAgentApiKey: vi.fn(() => 'test-api-key'),
 }));
 
-import { getAgentApiKey } from '@/shared/api/server-config';
-
 describe('GET /api/agent/run-mission', () => {
   beforeEach(() => {
     vi.mocked(global.fetch).mockReset();

@@ -2,7 +2,8 @@
 
 import { useTheme } from 'next-themes';
 import { useSyncExternalStore } from 'react';
-import { Switch } from '@/components/ui/switch';
+import { RiSunLine, RiMoonLine } from '@remixicon/react';
+import { Button } from '@/components/ui/button';
 
 const emptySubscribe = () => () => {};
 
@@ -16,15 +17,22 @@ export function ThemeToggle() {
 
   if (!mounted) return null;
 
+  const isDark = theme === 'dark';
+
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-sm text-muted-foreground">Light</span>
-      <Switch
-        checked={theme === 'dark'}
-        onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
-        aria-label="Toggle dark mode"
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+      aria-label="Toggle dark mode"
+      className="relative h-8 w-8"
+    >
+      <RiSunLine
+        className={`h-4 w-4 transition-all duration-300 ${isDark ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'}`}
       />
-      <span className="text-sm text-muted-foreground">Dark</span>
-    </div>
+      <RiMoonLine
+        className={`absolute h-4 w-4 transition-all duration-300 ${isDark ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0'}`}
+      />
+    </Button>
   );
 }

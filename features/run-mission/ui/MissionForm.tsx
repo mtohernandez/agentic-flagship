@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { RiCloseLine, RiAddLine } from '@remixicon/react';
+import { RiCloseLine, RiAddLine, RiArrowUpLine, RiSettings3Line } from '@remixicon/react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -40,6 +39,7 @@ export function MissionForm({
   const [instructions, setInstructions] = useState('');
   const [urlError, setUrlError] = useState<string | undefined>();
   const [instructionsError, setInstructionsError] = useState<string | undefined>();
+  const [showInstructions, setShowInstructions] = useState(false);
 
   const [pendingPrompts, setPendingPrompts] = useState<string[]>([]);
   const [totalQueued, setTotalQueued] = useState(0);
@@ -52,7 +52,10 @@ export function MissionForm({
     const result = validateJobInput(urlInput, action, instructions, jobs);
     if (!result.valid) {
       if (result.urlError) setUrlError(result.urlError);
-      if (result.instructionsError) setInstructionsError(result.instructionsError);
+      if (result.instructionsError) {
+        setInstructionsError(result.instructionsError);
+        setShowInstructions(true);
+      }
       return;
     }
     setJobs((prev) => [
@@ -136,68 +139,42 @@ export function MissionForm({
   return (
     <div className={cn('fixed bottom-4 left-0 right-0 px-4 z-10')}>
       <div className="relative max-w-2xl mx-auto pointer-events-auto">
-        <div className="flex flex-col gap-2 rounded-xl border bg-background p-3 shadow-lg">
-          {/* Header row */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 font-semibold text-sm">
-              Chat
-              {messageCount > 0 && <Badge variant="secondary">{messageCount}</Badge>}
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onClear}
-              disabled={messageCount === 0 || isProcessing}
-              aria-label="Clear chat"
-            >
-              Clear
-            </Button>
-          </div>
-
-          {/* Job badges */}
+        <div className="flex flex-col rounded-xl border bg-card p-3 shadow-lg">
+          {/* Job mini-cards */}
           {jobs.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
+            <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto mb-2">
               {jobs.map((job, i) => (
-                <Badge key={i} variant="secondary" className="gap-1 pr-1">
-                  {hostname(job.url)} &middot; {actionLabel(job.action)}
+                <div
+                  key={i}
+                  className="group relative rounded-lg border bg-card shadow-sm px-3 py-1.5"
+                >
+                  <div className="text-xs font-bold leading-tight">{hostname(job.url)}</div>
+                  <div className="text-xs text-muted-foreground">{actionLabel(job.action)}</div>
                   <button
                     type="button"
                     onClick={() => removeJob(i)}
                     disabled={isProcessing}
-                    className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5 disabled:opacity-50"
+                    className="absolute -top-1.5 -right-1.5 size-4 rounded-full bg-muted flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
                     aria-label={`Remove ${hostname(job.url)} ${actionLabel(job.action)}`}
                   >
                     <RiCloseLine className="size-3" />
                   </button>
-                </Badge>
+                </div>
               ))}
             </div>
           )}
 
-          {/* Input row */}
-          <div className="flex gap-2 items-start">
-            <div className="flex-1 flex flex-col gap-1">
-              <Input
-                value={urlInput}
-                onChange={(e) => {
-                  setUrlInput(e.target.value);
-                  if (urlError) setUrlError(undefined);
-                }}
-                onKeyDown={handleUrlKeyDown}
-                placeholder="https://..."
-                disabled={isProcessing}
-                aria-label="URL input"
-              />
-              {urlError && <FieldError>{urlError}</FieldError>}
-            </div>
-
+          {/* Composite input bar */}
+          <div className="flex items-center gap-1.5 rounded-lg border bg-background p-2">
             <Select
               value={action}
               onValueChange={(v) => setAction(v as ScrapeAction)}
               disabled={isProcessing}
             >
-              <SelectTrigger className="w-48" aria-label="Scrape action">
+              <SelectTrigger
+                className="border-0 bg-secondary/60 rounded-lg h-8 w-auto max-w-35 text-xs shadow-none focus:ring-0"
+                aria-label="Scrape action"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -209,56 +186,105 @@ export function MissionForm({
               </SelectContent>
             </Select>
 
+            <Input
+              value={urlInput}
+              onChange={(e) => {
+                setUrlInput(e.target.value);
+                if (urlError) setUrlError(undefined);
+              }}
+              onKeyDown={handleUrlKeyDown}
+              placeholder="https://..."
+              disabled={isProcessing}
+              aria-label="URL input"
+              className="flex-1 border-0 shadow-none focus-visible:ring-0 h-8 text-sm"
+            />
+
             <Button
               type="button"
-              variant="outline"
-              size="sm"
+              variant="ghost"
+              size="icon"
+              className="size-8 shrink-0"
+              onClick={() => setShowInstructions((v) => !v)}
+              disabled={isProcessing}
+              aria-label="Toggle instructions"
+            >
+              <RiSettings3Line className="size-4" />
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-8 shrink-0"
               onClick={addJob}
               disabled={isProcessing || !urlInput.trim()}
               aria-label="Add Job"
             >
               <RiAddLine className="size-4" />
-              Add Job
             </Button>
-          </div>
 
-          {/* Instructions textarea */}
-          <div className="flex flex-col gap-1">
-            <Textarea
-              value={instructions}
-              onChange={(e) => {
-                setInstructions(e.target.value);
-                if (instructionsError) setInstructionsError(undefined);
-              }}
-              placeholder={currentActionOption.hint}
-              rows={2}
-              disabled={isProcessing}
-              className="min-h-0 resize-none"
-              aria-label="Additional instructions"
-            />
-            {instructionsError && <FieldError>{instructionsError}</FieldError>}
-          </div>
+            <Button
+              type="button"
+              variant="default"
+              size="icon"
+              className="size-8 shrink-0 rounded-lg"
+              onClick={handleSubmit}
+              disabled={!canSubmit(jobs) || isProcessing}
+              aria-label="Run"
+            >
+              {isLoading ? <SpinnerDotted /> : <RiArrowUpLine className="size-4" />}
+              <span className="sr-only">
+                {jobs.length > 0 ? `Run ${jobs.length} job${jobs.length === 1 ? '' : 's'}` : 'Run'}
+              </span>
+            </Button>
 
-          {/* Run button */}
-          <Button
-            type="button"
-            className="w-full"
-            onClick={handleSubmit}
-            disabled={!canSubmit(jobs) || isProcessing}
-            aria-label="Run"
-          >
-            {isLoading ? (
-              <SpinnerDotted />
-            ) : jobs.length > 0 ? (
-              `Run ${jobs.length} job${jobs.length === 1 ? '' : 's'}`
-            ) : (
-              'Run'
+            {messageCount > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8 shrink-0"
+                onClick={onClear}
+                disabled={isProcessing}
+                aria-label="Clear chat"
+              >
+                <RiCloseLine className="size-4" />
+              </Button>
             )}
-          </Button>
+          </div>
+
+          {/* URL error */}
+          {urlError && <FieldError className="mt-2">{urlError}</FieldError>}
+
+          {/* Collapsible instructions */}
+          <div
+            className={cn(
+              'grid transition-[grid-template-rows] duration-200 ease-in-out',
+              showInstructions ? 'grid-rows-[1fr] mt-2' : 'grid-rows-[0fr]'
+            )}
+          >
+            <div className="overflow-hidden">
+              <div className="flex flex-col gap-1 pt-1">
+                <Textarea
+                  value={instructions}
+                  onChange={(e) => {
+                    setInstructions(e.target.value);
+                    if (instructionsError) setInstructionsError(undefined);
+                  }}
+                  placeholder={currentActionOption.hint}
+                  rows={2}
+                  disabled={isProcessing}
+                  className="min-h-0 resize-none"
+                  aria-label="Additional instructions"
+                />
+                {instructionsError && <FieldError>{instructionsError}</FieldError>}
+              </div>
+            </div>
+          </div>
 
           {/* Queue status */}
           {pendingPrompts.length > 0 && (
-            <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground">
+            <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground mt-2">
               <SpinnerDotted />
               <span>
                 Processing {processedCount} of {totalQueued} jobs...

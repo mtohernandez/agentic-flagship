@@ -17,6 +17,12 @@ vi.mock('@remixicon/react', () => ({
   ),
 }));
 
+vi.mock('@/components/ui/spinner', () => ({
+  Spinner: (props: React.SVGProps<SVGSVGElement>) => (
+    <span data-testid="icon-spinner" className={props.className as string} />
+  ),
+}));
+
 const makeThought = (id: string, content: string): AgentThought => ({
   id,
   type: 'thought',
@@ -26,8 +32,15 @@ const makeThought = (id: string, content: string): AgentThought => ({
 });
 
 describe('InlineThoughts', () => {
-  it('returns null for empty thoughts array', () => {
-    const { container } = render(<InlineThoughts thoughts={[]} isComplete={false} />);
+  it('shows thinking fallback for empty thoughts during streaming', () => {
+    render(<InlineThoughts thoughts={[]} isComplete={false} />);
+
+    expect(screen.getByText('Thinking...')).toBeInTheDocument();
+    expect(screen.getByTestId('icon-spinner')).toBeInTheDocument();
+  });
+
+  it('returns null for empty thoughts when complete', () => {
+    const { container } = render(<InlineThoughts thoughts={[]} isComplete={true} />);
 
     expect(container.innerHTML).toBe('');
   });
@@ -39,25 +52,11 @@ describe('InlineThoughts', () => {
     expect(screen.getByText('Completed in 2 steps')).toBeInTheDocument();
   });
 
-  it('shows "Thinking (X steps)" when isComplete is false', () => {
-    const thoughts = [makeThought('1', 'First'), makeThought('2', 'Second')];
-    render(<InlineThoughts thoughts={thoughts} isComplete={false} />);
-
-    expect(screen.getByText('Thinking (2 steps)')).toBeInTheDocument();
-  });
-
   it('uses singular "step" for 1 thought', () => {
     const thoughts = [makeThought('1', 'Only one')];
     render(<InlineThoughts thoughts={thoughts} isComplete={true} />);
 
     expect(screen.getByText('Completed in 1 step')).toBeInTheDocument();
-  });
-
-  it('starts expanded when not complete', () => {
-    const thoughts = [makeThought('1', 'First')];
-    render(<InlineThoughts thoughts={thoughts} isComplete={false} />);
-
-    expect(screen.getByTestId('thought-1')).toBeInTheDocument();
   });
 
   it('starts collapsed when complete', () => {
@@ -81,5 +80,27 @@ describe('InlineThoughts', () => {
     // Click to collapse
     fireEvent.click(screen.getByRole('button'));
     expect(screen.queryByTestId('thought-1')).not.toBeInTheDocument();
+  });
+
+  it('renders only active thought during streaming', () => {
+    const thoughts = [makeThought('1', 'First'), makeThought('2', 'Second')];
+    render(<InlineThoughts thoughts={thoughts} isComplete={false} activeThoughtId="2" />);
+
+    expect(screen.queryByTestId('thought-1')).not.toBeInTheDocument();
+    expect(screen.getByTestId('thought-2')).toBeInTheDocument();
+  });
+
+  it('falls back to latest thought during streaming when no activeThoughtId matches', () => {
+    const thoughts = [makeThought('1', 'First')];
+    render(<InlineThoughts thoughts={thoughts} isComplete={false} activeThoughtId="nonexistent" />);
+
+    expect(screen.getByTestId('thought-1')).toBeInTheDocument();
+  });
+
+  it('falls back to latest thought during streaming when activeThoughtId is undefined', () => {
+    const thoughts = [makeThought('1', 'First')];
+    render(<InlineThoughts thoughts={thoughts} isComplete={false} />);
+
+    expect(screen.getByTestId('thought-1')).toBeInTheDocument();
   });
 });

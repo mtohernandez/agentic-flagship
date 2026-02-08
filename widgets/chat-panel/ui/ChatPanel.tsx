@@ -2,7 +2,6 @@
 
 import { MessageList } from '@/entities/message';
 import type { Message } from '@/entities/message';
-import { ThinkingIndicator } from '@/entities/agent';
 import { MissionForm } from '@/features/run-mission';
 
 interface ChatPanelProps {
@@ -14,16 +13,14 @@ interface ChatPanelProps {
 
 export function ChatPanel({ messages, isLoading, onSendMessage, onClear }: ChatPanelProps) {
   return (
-    <>
-      <MessageList messages={messages}>
-        <ThinkingIndicator isThinking={isLoading} />
-      </MessageList>
+    <div className="flex flex-col h-full">
+      <MessageList messages={messages} />
       <MissionForm
         onSubmit={onSendMessage}
         isLoading={isLoading}
         messageCount={messages.length}
         onClear={onClear}
       />
-    </>
+    </div>
   );
 }
