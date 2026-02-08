@@ -1,5 +1,7 @@
 # Agentic Flagship
 
+![Showcase](https://github.com/user-attachments/assets/56b438ab-da70-451f-b2b3-0c262d96bb67)
+
 A chat interface for an AI agent that scrapes websites. You send a prompt describing what you need, and the agent streams back its response in real time — showing you what it's thinking and doing as it works.
 
 ## How it works
